@@ -1,0 +1,8 @@
+{
+  "settings": {
+    "microphone": "name or id of micro",
+    "unnoised": false,
+    "active-profile-id": 1,
+    "server-port": 8642
+  }
+}

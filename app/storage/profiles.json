@@ -1,0 +1,25 @@
+{
+  "profiles":[
+    {
+      "id": 1,
+      "name": "default",
+      "images": [
+        {
+          "id": 0,
+          "path-to-image": "image0.png",
+          "volume-level": 0
+        },
+        {
+          "id": 1,
+          "path-to-image": "image1.png",
+          "volume-level": 52
+        },
+        {
+          "id": 2,
+          "path-to-image": "image2.png",
+          "volume-level": 48
+        }
+      ]
+    }
+  ]
+}
