@@ -28,9 +28,18 @@ def _numpy_available() -> bool:
     return importlib.util.find_spec("numpy") is not None
 
 
+def _speech_recognition_available() -> bool:
+    return importlib.util.find_spec("speech_recognition") is not None
+
+
 def list_input_devices() -> List[MicrophoneDevice]:
     devices = [MicrophoneDevice(device_id=None, name="Default")]
     if not _sounddevice_available():
+        if not _speech_recognition_available():
+            return devices
+        speech_recognition = importlib.import_module("speech_recognition")
+        for idx, name in enumerate(speech_recognition.Microphone.list_microphone_names()):
+            devices.append(MicrophoneDevice(device_id=idx, name=name))
         return devices
     sounddevice = importlib.import_module("sounddevice")
     for idx, info in enumerate(sounddevice.query_devices()):
