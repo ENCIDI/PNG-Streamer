@@ -1,7 +1,7 @@
 {
   "settings": {
-    "microphone": "name or id of micro",
-    "unnoised": false,
+    "microphone": "Микрофон (fifine Microphone)",
+    "unnoised": true,
     "active-profile-id": 1,
     "server-port": 8642
   }

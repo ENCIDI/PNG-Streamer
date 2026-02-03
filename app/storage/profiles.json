@@ -1,5 +1,5 @@
 {
-  "profiles":[
+  "profiles": [
     {
       "id": 1,
       "name": "default",
@@ -12,12 +12,12 @@
         {
           "id": 1,
           "path-to-image": "image1.png",
-          "volume-level": 52
+          "volume-level": 40
         },
         {
           "id": 2,
           "path-to-image": "image2.png",
-          "volume-level": 48
+          "volume-level": 90
         }
       ]
     }

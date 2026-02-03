@@ -1,3 +1,6 @@
 numpy
 sounddevice
 SpeechRecognition
+fastapi
+uvicorn
+PyQt6

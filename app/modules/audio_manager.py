@@ -37,14 +37,22 @@ def list_input_devices() -> List[MicrophoneDevice]:
     if not _sounddevice_available():
         if not _speech_recognition_available():
             return devices
-        speech_recognition = importlib.import_module("speech_recognition")
-        for idx, name in enumerate(speech_recognition.Microphone.list_microphone_names()):
-            devices.append(MicrophoneDevice(device_id=idx, name=name))
+        try:
+            speech_recognition = importlib.import_module("speech_recognition")
+            for idx, name in enumerate(speech_recognition.Microphone.list_microphone_names()):
+                devices.append(MicrophoneDevice(device_id=idx, name=name))
+        except Exception:
+            return devices
         return devices
-    sounddevice = importlib.import_module("sounddevice")
-    for idx, info in enumerate(sounddevice.query_devices()):
-        if info.get("max_input_channels", 0) > 0:
-            devices.append(MicrophoneDevice(device_id=idx, name=info.get("name", f"Input {idx}")))
+    try:
+        sounddevice = importlib.import_module("sounddevice")
+        for idx, info in enumerate(sounddevice.query_devices()):
+            if info.get("max_input_channels", 0) > 0:
+                devices.append(
+                    MicrophoneDevice(device_id=idx, name=info.get("name", f"Input {idx}"))
+                )
+    except Exception:
+        return devices
     return devices
 
 
@@ -105,12 +113,24 @@ def start_monitor(device_id: Optional[int] = None) -> None:
         else:
             _update_volume(level)
 
-    _stream = sounddevice.InputStream(
-        device=device_id,
-        channels=1,
-        callback=callback,
-    )
-    _stream.start()
+    try:
+        _stream = sounddevice.InputStream(
+            device=device_id,
+            channels=1,
+            callback=callback,
+        )
+        _stream.start()
+    except Exception:
+        if device_id is not None:
+            try:
+                _stream = sounddevice.InputStream(
+                    device=None,
+                    channels=1,
+                    callback=callback,
+                )
+                _stream.start()
+            except Exception:
+                _update_volume(0.0)
 
 
 def stop_monitor() -> None:
