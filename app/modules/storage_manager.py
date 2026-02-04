@@ -82,13 +82,20 @@ def _next_profile_id(profiles: List[Dict[str, Any]]) -> int:
     return max_id + 1
 
 
-def create_profile(name: str, images: List[Dict[str, Any]]) -> Dict[str, Any]:
+def create_profile(
+    name: str,
+    images: List[Dict[str, Any]],
+    blink: Optional[Dict[str, Any]] = None,
+    blink_images: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     profiles_data = load_profiles()
     profiles = profiles_data.setdefault("profiles", [])
     new_profile = {
         "id": _next_profile_id(profiles),
         "name": name,
         "images": images,
+        "blink": blink or {},
+        "blink-images": blink_images or [],
     }
     profiles.append(new_profile)
     save_profiles(profiles_data)

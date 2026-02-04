@@ -86,6 +86,8 @@ class PNGStreamerApp(QDialog):
             created = sm.create_profile(
                 name=dialog.result_profile.get("name", "profile"),
                 images=dialog.result_profile.get("images", []),
+                blink=dialog.result_profile.get("blink", {}),
+                blink_images=dialog.result_profile.get("blink-images", []),
             )
             sm.update_settings({"active-profile-id": created.get("id")})
             self._populate_profiles()
@@ -220,6 +222,19 @@ class ProfilesCustomizationScreen(QDialog):
             self.path9,
             self.path10,
         ]
+        self._blink_boxes = [
+            getattr(self, "pathClip1", None),
+            getattr(self, "pathClip2", None),
+            getattr(self, "pathClip3", None),
+            getattr(self, "pathClip4", None),
+            getattr(self, "pathClip5", None),
+            getattr(self, "pathClip6", None),
+            getattr(self, "pathClip7", None),
+            getattr(self, "pathClip8", None),
+            getattr(self, "pathClip9", None),
+            getattr(self, "pathClip10", None),
+        ]
+        self._blink_boxes = [box for box in self._blink_boxes if box is not None]
         self._db_boxes = [
             self.db1,
             self.db2,
@@ -232,6 +247,9 @@ class ProfilesCustomizationScreen(QDialog):
             self.db9,
             self.db10,
         ]
+        self._blink_min_box = getattr(self, "clipLenthMin", None)
+        self._blink_max_box = getattr(self, "clipLenthMax", None)
+        self._blink_duration_box = getattr(self, "clipDuration", None)
 
         self._populate_images()
         self._load_profile()
@@ -261,11 +279,55 @@ class ProfilesCustomizationScreen(QDialog):
                     "volume-level": volume_level,
                 }
             )
+        blink_images = []
+        for idx, combo in enumerate(self._blink_boxes):
+            path_value = combo.currentText().strip()
+            if not path_value:
+                continue
+            blink_images.append(
+                {
+                    "id": idx,
+                    "path-to-image": path_value,
+                }
+            )
+        blink_min = 0
+        if self._blink_min_box is not None:
+            blink_min_text = (self._blink_min_box.text() or "").strip()
+            if blink_min_text:
+                try:
+                    blink_min = int(blink_min_text)
+                except (TypeError, ValueError):
+                    QMessageBox.warning(self, "PNG Streamer", "Blink min must be a number.")
+                    return
+        blink_max = 0
+        if self._blink_max_box is not None:
+            blink_max_text = (self._blink_max_box.text() or "").strip()
+            if blink_max_text:
+                try:
+                    blink_max = int(blink_max_text)
+                except (TypeError, ValueError):
+                    QMessageBox.warning(self, "PNG Streamer", "Blink max must be a number.")
+                    return
+        blink_duration = 0
+        if self._blink_duration_box is not None:
+            blink_duration_text = (self._blink_duration_box.text() or "").strip()
+            if blink_duration_text:
+                try:
+                    blink_duration = int(blink_duration_text)
+                except (TypeError, ValueError):
+                    QMessageBox.warning(self, "PNG Streamer", "Blink duration must be a number.")
+                    return
         profile_id = self._profile.get("id") if self._profile else None
         self.result_profile = {
             "id": profile_id,
             "name": name,
             "images": images,
+            "blink": {
+                "interval-min-ms": blink_min,
+                "interval-max-ms": blink_max,
+                "duration-ms": blink_duration,
+            },
+            "blink-images": blink_images,
         }
         self.accept()
 
@@ -274,6 +336,11 @@ class ProfilesCustomizationScreen(QDialog):
 
     def _populate_images(self):
         for combo in self._image_boxes:
+            combo.clear()
+            combo.addItem("")
+            for image_name in self._images:
+                combo.addItem(image_name)
+        for combo in self._blink_boxes:
             combo.clear()
             combo.addItem("")
             for image_name in self._images:
@@ -297,6 +364,26 @@ class ProfilesCustomizationScreen(QDialog):
                 combo.addItem(path_value)
             combo.setCurrentText(path_value)
             db_box.setText(str(image.get("volume-level", "")))
+        blink = self._profile.get("blink", {}) if isinstance(self._profile.get("blink", {}), dict) else {}
+        if self._blink_min_box is not None:
+            self._blink_min_box.setText(str(blink.get("interval-min-ms", "")))
+        if self._blink_max_box is not None:
+            self._blink_max_box.setText(str(blink.get("interval-max-ms", "")))
+        if self._blink_duration_box is not None:
+            self._blink_duration_box.setText(str(blink.get("duration-ms", "")))
+        blink_images = {
+            img.get("id"): img
+            for img in self._profile.get("blink-images", [])
+            if isinstance(img, dict)
+        }
+        for idx, combo in enumerate(self._blink_boxes):
+            image = blink_images.get(idx)
+            if not image:
+                continue
+            path_value = str(image.get("path-to-image", ""))
+            if path_value and combo.findText(path_value) == -1:
+                combo.addItem(path_value)
+            combo.setCurrentText(path_value)
 
     def closeEvent(self, event):
         self.reject()
