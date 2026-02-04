@@ -59,11 +59,18 @@ def _normalize_images(images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             volume_level = int(image.get("volume-level", 0))
         except (TypeError, ValueError):
             volume_level = 0
+        try:
+            shake_level = int(image.get("shake-level", 0))
+        except (TypeError, ValueError):
+            shake_level = 0
+        if shake_level < 0:
+            shake_level = 0
         normalized.append(
             {
                 "id": image.get("id"),
                 "path-to-image": path_value,
                 "volume-level": volume_level,
+                "shake-level": shake_level,
             }
         )
     return normalized
@@ -164,19 +171,30 @@ def _pick_blink_image(profile: Dict[str, Any], image_id: Optional[int]) -> Optio
     return _resolve_image_path(path_value)
 
 
-def get_current_image_path(volume: Optional[float] = None) -> Optional[Path]:
+def get_current_image_state(volume: Optional[float] = None) -> Tuple[Optional[Path], int]:
     profile = get_active_profile()
     if not profile:
-        return None
+        return None, 0
     current_volume = am.get_current_volume() if volume is None else volume
     selected = _pick_image_entry(profile, current_volume)
     if not selected:
-        return None
+        return None, 0
     base_path = _resolve_image_path(str(selected.get("path-to-image", "")))
     if base_path is None:
-        return None
+        return None, 0
+    try:
+        shake_level = int(selected.get("shake-level", 0))
+    except (TypeError, ValueError):
+        shake_level = 0
+    if shake_level < 0:
+        shake_level = 0
     if _should_blink(profile):
         blink_path = _pick_blink_image(profile, selected.get("id"))
         if blink_path is not None:
-            return blink_path
-    return base_path
+            return blink_path, shake_level
+    return base_path, shake_level
+
+
+def get_current_image_path(volume: Optional[float] = None) -> Optional[Path]:
+    path, _ = get_current_image_state(volume)
+    return path

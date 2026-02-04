@@ -247,6 +247,18 @@ class ProfilesCustomizationScreen(QDialog):
             self.db9,
             self.db10,
         ]
+        self._shake_sliders = [
+            getattr(self, "shake1", None),
+            getattr(self, "shake2", None),
+            getattr(self, "shake3", None),
+            getattr(self, "shake4", None),
+            getattr(self, "shake5", None),
+            getattr(self, "shake6", None),
+            getattr(self, "shake7", None),
+            getattr(self, "shake8", None),
+            getattr(self, "shake9", None),
+            getattr(self, "shake10", None),
+        ]
         self._blink_min_box = getattr(self, "clipLenthMin", None)
         self._blink_max_box = getattr(self, "clipLenthMax", None)
         self._blink_duration_box = getattr(self, "clipDuration", None)
@@ -263,7 +275,9 @@ class ProfilesCustomizationScreen(QDialog):
             QMessageBox.warning(self, "PNG Streamer", "Please enter a profile name.")
             return
         images = []
-        for idx, (combo, db_box) in enumerate(zip(self._image_boxes, self._db_boxes)):
+        for idx, (combo, db_box, shake_slider) in enumerate(
+            zip(self._image_boxes, self._db_boxes, self._shake_sliders)
+        ):
             path_value = combo.currentText().strip()
             if not path_value:
                 continue
@@ -272,11 +286,13 @@ class ProfilesCustomizationScreen(QDialog):
             except (TypeError, ValueError):
                 QMessageBox.warning(self, "PNG Streamer", "Threshold must be a number.")
                 return
+            shake_level = shake_slider.value() if shake_slider is not None else 0
             images.append(
                 {
                     "id": idx,
                     "path-to-image": path_value,
                     "volume-level": volume_level,
+                    "shake-level": shake_level,
                 }
             )
         blink_images = []
@@ -355,15 +371,25 @@ class ProfilesCustomizationScreen(QDialog):
             for img in self._profile.get("images", [])
             if isinstance(img, dict)
         }
-        for idx, (combo, db_box) in enumerate(zip(self._image_boxes, self._db_boxes)):
+        for idx, (combo, db_box, shake_slider) in enumerate(
+            zip(self._image_boxes, self._db_boxes, self._shake_sliders)
+        ):
             image = images.get(idx)
             if not image:
+                if shake_slider is not None:
+                    shake_slider.setValue(0)
                 continue
             path_value = str(image.get("path-to-image", ""))
             if path_value and combo.findText(path_value) == -1:
                 combo.addItem(path_value)
             combo.setCurrentText(path_value)
             db_box.setText(str(image.get("volume-level", "")))
+            if shake_slider is not None:
+                try:
+                    shake_level = int(image.get("shake-level", 0))
+                except (TypeError, ValueError):
+                    shake_level = 0
+                shake_slider.setValue(max(0, shake_level))
         blink = self._profile.get("blink", {}) if isinstance(self._profile.get("blink", {}), dict) else {}
         if self._blink_min_box is not None:
             self._blink_min_box.setText(str(blink.get("interval-min-ms", "")))

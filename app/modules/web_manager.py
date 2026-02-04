@@ -101,10 +101,16 @@ def widget_page() -> str:
 
 @_APP.get("/image.png")
 def widget_image() -> Response:
-    path = lm.get_current_image_path()
+    path, _ = lm.get_current_image_state()
     if path is None:
         return Response(content=_TRANSPARENT_PNG, media_type="image/png")
     return FileResponse(path)
+
+
+@_APP.get("/state")
+def widget_state() -> dict:
+    _, shake_level = lm.get_current_image_state()
+    return {"shake": shake_level}
 
 
 @_APP.get("/health")
@@ -128,9 +134,55 @@ def _widget_html() -> str:
     <img id="avatar" src="/image.png" alt="avatar" />
     <script>
       const img = document.getElementById("avatar");
-      setInterval(() => {
+      let shakeLevel = 0;
+      let shakeSpeed = 1.0;
+      const startTime = performance.now();
+
+      const clampShake = (value) => {
+        const numeric = Number(value);
+        if (Number.isNaN(numeric) || numeric <= 0) {
+          return 0;
+        }
+        return numeric;
+      };
+
+      const smoothNoise = (t, freqA, freqB) => {
+        return Math.sin(t * freqA) * 0.65 + Math.sin(t * freqB + 1.7) * 0.35;
+      };
+
+      const applyShake = (now) => {
+        if (shakeLevel <= 0) {
+          img.style.transform = "translate(0px, 0px)";
+          return;
+        }
+        const t = (now - startTime) * 0.001 * shakeSpeed;
+        const x = smoothNoise(t, 12.0, 23.0) * shakeLevel;
+        const y = smoothNoise(t + 3.1, 15.0, 27.0) * shakeLevel;
+        img.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+      };
+
+      const refresh = async () => {
+        try {
+          const response = await fetch("/state?ts=" + Date.now());
+          if (response.ok) {
+            const data = await response.json();
+            shakeLevel = clampShake(data.shake);
+            shakeSpeed = 2.2;
+          }
+        } catch (err) {
+          // ignore network errors
+        }
         img.src = "/image.png?ts=" + Date.now();
-      }, 200);
+      };
+
+      const tick = (now) => {
+        applyShake(now);
+        requestAnimationFrame(tick);
+      };
+
+      refresh();
+      setInterval(refresh, 200);
+      requestAnimationFrame(tick);
     </script>
   </body>
 </html>"""
