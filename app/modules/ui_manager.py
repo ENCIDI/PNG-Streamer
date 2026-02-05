@@ -1,15 +1,26 @@
+from pathlib import Path
+
 from PyQt6 import uic
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QSystemTrayIcon
 import sys
 
 from app.modules import audio_manager as am, logic_manager as lm, storage_manager as sm, web_manager as wm
+
+
+def _load_app_icon() -> QIcon:
+    icon_path = Path(__file__).resolve().parent.parent / "ui" / "PNGStreamer.ico"
+    if not icon_path.exists():
+        return QIcon()
+    return QIcon(str(icon_path))
 
 
 class PNGStreamerApp(QDialog):
     def __init__(self):
         super().__init__()
         uic.loadUi("app/ui/main.ui", self)
+        self._init_icons()
 
         self.applySettingsButton.clicked.connect(self.apply_settings)
         self.closeButton.clicked.connect(self.close)
@@ -24,12 +35,21 @@ class PNGStreamerApp(QDialog):
         self.microChoose.currentIndexChanged.connect(self.micro_changed)
         self.noiseCheckbox.stateChanged.connect(self.noise_toggled)
         self.selectProfile.currentIndexChanged.connect(self.profile_changed)
+        self.consoleCheckbox.stateChanged.connect(self.console_toggled)
 
         self.settings = sm.load_settings()
         self._populate_microphones()
         self._populate_profiles()
         self._apply_settings_to_ui()
         self._start_volume_updates()
+
+    def _init_icons(self):
+        app_icon = _load_app_icon()
+        if not app_icon.isNull():
+            self.setWindowIcon(app_icon)
+            self.tray = QSystemTrayIcon(app_icon, self)
+            self.tray.setToolTip("PNG Streamer")
+            self.tray.show()
 
     def apply_settings(self):
         selected_device = self.microChoose.currentData()
@@ -40,6 +60,7 @@ class PNGStreamerApp(QDialog):
                 "microphone": selected_name,
                 "unnoised": self.noiseCheckbox.isChecked(),
                 "server-port": server_port,
+                "show-console": self.consoleCheckbox.isChecked(),
             }
         )
         am.set_noise_suppression(self.noiseCheckbox.isChecked())
@@ -114,6 +135,9 @@ class PNGStreamerApp(QDialog):
         am.set_noise_suppression(enabled)
         sm.update_settings({"unnoised": enabled})
 
+    def console_toggled(self, state):
+        sm.update_settings({"show-console": self.consoleCheckbox.isChecked()})
+
     def _populate_microphones(self):
         self.microChoose.clear()
         devices = am.list_input_devices()
@@ -137,6 +161,7 @@ class PNGStreamerApp(QDialog):
             target_index = 0
         self.microChoose.setCurrentIndex(target_index)
         self.noiseCheckbox.setChecked(bool(settings.get("unnoised", False)))
+        self.consoleCheckbox.setChecked(bool(settings.get("show-console", False)))
         selected_device = self.microChoose.currentData()
         am.set_noise_suppression(self.noiseCheckbox.isChecked())
         am.start_monitor(selected_device)
@@ -418,6 +443,9 @@ class ProfilesCustomizationScreen(QDialog):
 
 def start_program():
     app = QApplication(sys.argv)
+    app_icon = _load_app_icon()
+    if not app_icon.isNull():
+        app.setWindowIcon(app_icon)
     window = PNGStreamerApp()
     window.show()
     app.exec()

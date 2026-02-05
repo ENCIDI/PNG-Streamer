@@ -301,9 +301,9 @@
   <widget class="QPushButton" name="applySettingsButton">
    <property name="geometry">
     <rect>
-     <x>180</x>
+     <x>260</x>
      <y>540</y>
-     <width>191</width>
+     <width>161</width>
      <height>23</height>
     </rect>
    </property>
@@ -314,14 +314,27 @@
   <widget class="QPushButton" name="closeButton">
    <property name="geometry">
     <rect>
-     <x>374</x>
+     <x>434</x>
      <y>540</y>
-     <width>191</width>
+     <width>131</width>
      <height>23</height>
     </rect>
    </property>
    <property name="text">
     <string>Закрыть программу</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="consoleCheckbox">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>540</y>
+     <width>221</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Отображать консоль при запуске</string>
    </property>
   </widget>
  </widget>

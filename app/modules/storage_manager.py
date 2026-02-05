@@ -13,6 +13,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "unnoised": False,
         "active-profile-id": 1,
         "server-port": 8642,
+        "show-console": True,
     }
 }
 
