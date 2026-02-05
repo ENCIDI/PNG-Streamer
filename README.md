@@ -1,17 +1,22 @@
-# PNG Streamer
+﻿# PNG Streamer
 
 PNG Streamer — настольное приложение для стримеров: переключает PNG‑аватар по громкости микрофона и отдаёт виджет для OBS.
 
 ## Возможности
 - Мониторинг громкости микрофона
+- Шумоподавление микрофона
 - Профили с порогами громкости для изображений
+- Моргание (blink) и список кадров для него
 - Веб‑виджет (FastAPI) для источника браузера в OBS
-
-## Требования
-- Python 3.10+
-- Зависимости в `app/requirements.txt`
+- Переключение отображения консоли при старте
 
 ## Запуск
+Быстрый старт:
+```powershell
+PNGStreamer.bat
+```
+
+Вручную:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
@@ -27,8 +32,8 @@ http://127.0.0.1:<port>/widget
 как источник браузера.
 
 ## Хранение данных
-- `app/storage/settings.json` — микрофон, шумоподавление, порт сервера, активный профиль.
-- `app/storage/profiles.json` — профили и пороги громкости для изображений.
+- `app/storage/settings.json` — микрофон, шумоподавление, порт сервера, активный профиль, отображение консоли.
+- `app/storage/profiles.json` — профили и пороги громкости для изображений, настройки мигания.
 - `images/` — PNG‑файлы аватара.
 
 ---
@@ -39,14 +44,19 @@ PNG Streamer is a desktop app for streamers: it switches a PNG avatar based on m
 
 ## Features
 - Microphone volume monitoring
+- Microphone noise suppression
 - Profiles with image volume thresholds
+- Blink settings and blink frames
 - FastAPI widget for OBS browser source
-
-## Requirements
-- Python 3.10+
-- Dependencies in `app/requirements.txt`
+- Console visibility toggle on startup
 
 ## Run
+Quick start:
+```powershell
+PNGStreamer.bat
+```
+
+Manual:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
@@ -62,6 +72,6 @@ http://127.0.0.1:<port>/widget
 as a browser source.
 
 ## Storage
-- `app/storage/settings.json` stores microphone, noise suppression, server port, active profile id.
-- `app/storage/profiles.json` stores profiles and image thresholds.
+- `app/storage/settings.json` stores microphone, noise suppression, server port, active profile, console visibility.
+- `app/storage/profiles.json` stores profiles, image thresholds, and blink settings.
 - `images/` contains avatar PNG files.
