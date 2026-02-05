@@ -40,6 +40,8 @@ http://127.0.0.1:<port>/widget
 
 # PNG Streamer
 
+# At the moment, the App is available only in Russian!
+
 PNG Streamer is a desktop app for streamers: it switches a PNG avatar based on microphone volume and serves a widget for OBS.
 
 ## Features
