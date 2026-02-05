@@ -6,7 +6,15 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QSystemTrayIcon
 import sys
 
-from app.modules import audio_manager as am, logic_manager as lm, storage_manager as sm, web_manager as wm
+from app.modules import (
+    audio_manager as am,
+    logging_manager as logm,
+    logic_manager as lm,
+    storage_manager as sm,
+    web_manager as wm,
+)
+
+_LOGGER = logm.get_logger(__name__)
 
 
 def _load_app_icon() -> QIcon:
@@ -42,6 +50,7 @@ class PNGStreamerApp(QDialog):
         self._populate_profiles()
         self._apply_settings_to_ui()
         self._start_volume_updates()
+        _LOGGER.info("UI initialized")
 
     def _init_icons(self):
         app_icon = _load_app_icon()
@@ -66,6 +75,13 @@ class PNGStreamerApp(QDialog):
         am.set_noise_suppression(self.noiseCheckbox.isChecked())
         am.start_monitor(selected_device)
         self.serverPortButton.setText(str(server_port))
+        _LOGGER.info(
+            "Settings applied: microphone=%s, noise=%s, port=%s, show_console=%s",
+            selected_name,
+            self.noiseCheckbox.isChecked(),
+            server_port,
+            self.consoleCheckbox.isChecked(),
+        )
 
     def edit_profile(self):
         profile_id = self.selectProfile.currentData()
@@ -80,6 +96,7 @@ class PNGStreamerApp(QDialog):
             sm.update_profile(dialog.result_profile)
             self._populate_profiles()
             self._select_profile_id(dialog.result_profile.get("id"))
+            _LOGGER.info("Profile updated: id=%s name=%s", dialog.result_profile.get("id"), dialog.result_profile.get("name"))
 
     def delete_profile(self):
         profile_id = self.selectProfile.currentData()
@@ -100,6 +117,7 @@ class PNGStreamerApp(QDialog):
         sm.update_settings({"active-profile-id": new_active})
         self._populate_profiles()
         self._select_profile_id(new_active)
+        _LOGGER.info("Profile deleted: id=%s", profile_id)
 
     def create_profile(self):
         dialog = ProfilesCustomizationScreen(profile=None)
@@ -113,6 +131,7 @@ class PNGStreamerApp(QDialog):
             sm.update_settings({"active-profile-id": created.get("id")})
             self._populate_profiles()
             self._select_profile_id(created.get("id"))
+            _LOGGER.info("Profile created: id=%s name=%s", created.get("id"), created.get("name"))
 
     def start_server(self):
         port = self._parse_port(self.serverPortButton.text())
@@ -121,22 +140,27 @@ class PNGStreamerApp(QDialog):
             QMessageBox.warning(self, "PNG Streamer", "Unable to start server.")
         self._update_server_ui()
         sm.update_settings({"server-port": port})
+        _LOGGER.info("Server start requested: port=%s status=%s", port, status)
 
     def stop_server(self):
         wm.stop_server()
         self._update_server_ui()
+        _LOGGER.info("Server stop requested")
 
     def micro_changed(self, index):
         selected_device = self.microChoose.itemData(index)
         am.start_monitor(selected_device)
+        _LOGGER.info("Microphone changed: device_id=%s", selected_device)
 
     def noise_toggled(self, state):
         enabled = self.noiseCheckbox.isChecked()
         am.set_noise_suppression(enabled)
         sm.update_settings({"unnoised": enabled})
+        _LOGGER.info("Noise suppression toggled: enabled=%s", enabled)
 
     def console_toggled(self, state):
         sm.update_settings({"show-console": self.consoleCheckbox.isChecked()})
+        _LOGGER.info("Console visibility toggled: show_console=%s", self.consoleCheckbox.isChecked())
 
     def _populate_microphones(self):
         self.microChoose.clear()
@@ -219,6 +243,7 @@ class PNGStreamerApp(QDialog):
         if profile_id is None:
             return
         sm.update_settings({"active-profile-id": profile_id})
+        _LOGGER.info("Active profile changed: id=%s", profile_id)
 
 
 class ProfilesCustomizationScreen(QDialog):
@@ -448,4 +473,5 @@ def start_program():
         app.setWindowIcon(app_icon)
     window = PNGStreamerApp()
     window.show()
+    _LOGGER.info("Application window shown")
     app.exec()

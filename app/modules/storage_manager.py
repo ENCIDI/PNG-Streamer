@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
+from app.modules import logging_manager as logm
 from typing import Any, Dict, List, Optional
 
 
 _SETTINGS_PATH = Path(__file__).resolve().parent.parent / "storage" / "settings.json"
 _PROFILES_PATH = Path(__file__).resolve().parent.parent / "storage" / "profiles.json"
+_LOGGER = logm.get_logger(__name__)
 
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
@@ -39,6 +41,7 @@ def save_settings(settings: Dict[str, Any]) -> None:
     _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _SETTINGS_PATH.open("w", encoding="utf-8") as settings_file:
         json.dump(settings, settings_file, ensure_ascii=False, indent=2)
+    _LOGGER.info("Settings saved")
 
 
 def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
@@ -60,6 +63,7 @@ def save_profiles(profiles: Dict[str, Any]) -> None:
     _PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _PROFILES_PATH.open("w", encoding="utf-8") as profiles_file:
         json.dump(profiles, profiles_file, ensure_ascii=False, indent=2)
+    _LOGGER.info("Profiles saved")
 
 
 def list_profiles() -> List[Dict[str, Any]]:
@@ -100,6 +104,7 @@ def create_profile(
     }
     profiles.append(new_profile)
     save_profiles(profiles_data)
+    _LOGGER.info("Profile created: id=%s name=%s", new_profile.get("id"), new_profile.get("name"))
     return new_profile
 
 
@@ -110,9 +115,19 @@ def update_profile(updated_profile: Dict[str, Any]) -> None:
         if profile.get("id") == updated_profile.get("id"):
             profiles[idx] = updated_profile
             save_profiles(profiles_data)
+            _LOGGER.info(
+                "Profile updated: id=%s name=%s",
+                updated_profile.get("id"),
+                updated_profile.get("name"),
+            )
             return
     profiles.append(updated_profile)
     save_profiles(profiles_data)
+    _LOGGER.info(
+        "Profile inserted: id=%s name=%s",
+        updated_profile.get("id"),
+        updated_profile.get("name"),
+    )
 
 
 def delete_profile(profile_id: int) -> None:
@@ -120,3 +135,4 @@ def delete_profile(profile_id: int) -> None:
     profiles = profiles_data.setdefault("profiles", [])
     profiles_data["profiles"] = [p for p in profiles if p.get("id") != profile_id]
     save_profiles(profiles_data)
+    _LOGGER.info("Profile deleted: id=%s", profile_id)

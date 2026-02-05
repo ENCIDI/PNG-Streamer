@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, Response
 import uvicorn
 
-from app.modules import logic_manager as lm
+from app.modules import logging_manager as logm, logic_manager as lm
+
+_LOGGER = logm.get_logger(__name__)
 
 
 _server_lock = threading.Lock()
@@ -202,6 +204,7 @@ def start_server(host: str, port: int) -> Tuple[bool, str]:
 
         _server_thread = threading.Thread(target=_run, daemon=True)
         _server_thread.start()
+        _LOGGER.info("Server started: host=%s port=%s", host, port)
         return True, "started"
 
 
@@ -214,6 +217,7 @@ def stop_server() -> bool:
         _server = None
         _server_thread = None
         _current_port = None
+        _LOGGER.info("Server stopped")
         return True
 
 
