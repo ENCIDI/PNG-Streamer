@@ -2,7 +2,7 @@
   "profiles": [
     {
       "id": 1,
-      "name": "Дефолт",
+      "name": "sample",
       "images": [
         {
           "id": 0,
@@ -13,8 +13,8 @@
         {
           "id": 1,
           "path-to-image": "image2.png",
-          "volume-level": 40,
-          "shake-level": 4
+          "volume-level": 30,
+          "shake-level": 1
         },
         {
           "id": 2,
@@ -26,7 +26,7 @@
       "blink": {
         "interval-min-ms": 2000,
         "interval-max-ms": 5000,
-        "duration-ms": 250
+        "duration-ms": 100
       },
       "blink-images": [
         {
@@ -40,6 +40,69 @@
         {
           "id": 2,
           "path-to-image": "image1.png"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Main",
+      "images": [
+        {
+          "id": 0,
+          "path-to-image": "model-static.png",
+          "volume-level": 0,
+          "shake-level": 0
+        },
+        {
+          "id": 1,
+          "path-to-image": "model-whisper.png",
+          "volume-level": 20,
+          "shake-level": 0
+        },
+        {
+          "id": 2,
+          "path-to-image": "model-normal.png",
+          "volume-level": 30,
+          "shake-level": 2
+        },
+        {
+          "id": 3,
+          "path-to-image": "model-loud.png",
+          "volume-level": 75,
+          "shake-level": 18
+        },
+        {
+          "id": 4,
+          "path-to-image": "model-AHHHHHHHHH.png",
+          "volume-level": 85,
+          "shake-level": 44
+        }
+      ],
+      "blink": {
+        "interval-min-ms": 2000,
+        "interval-max-ms": 5000,
+        "duration-ms": 150
+      },
+      "blink-images": [
+        {
+          "id": 0,
+          "path-to-image": "model-static-clip.png"
+        },
+        {
+          "id": 1,
+          "path-to-image": "model-whisper-clip.png"
+        },
+        {
+          "id": 2,
+          "path-to-image": "model-normal-clip.png"
+        },
+        {
+          "id": 3,
+          "path-to-image": "model-loud-clip.png"
+        },
+        {
+          "id": 4,
+          "path-to-image": "model-AHHHHHHHHH-clip.png"
         }
       ]
     }

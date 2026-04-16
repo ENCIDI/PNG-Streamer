@@ -40,12 +40,14 @@ class PNGStreamerApp(QDialog):
         self.startServerButton.clicked.connect(self.start_server)
         self.stopServerButton.clicked.connect(self.stop_server)
 
+        self.mProtocolChoose.currentIndexChanged.connect(self._populate_microphones)
         self.microChoose.currentIndexChanged.connect(self.micro_changed)
         self.noiseCheckbox.stateChanged.connect(self.noise_toggled)
         self.selectProfile.currentIndexChanged.connect(self.profile_changed)
         self.consoleCheckbox.stateChanged.connect(self.console_toggled)
 
         self.settings = sm.load_settings()
+        self._populate_host_apis()
         self._populate_microphones()
         self._populate_profiles()
         self._apply_settings_to_ui()
@@ -63,10 +65,12 @@ class PNGStreamerApp(QDialog):
     def apply_settings(self):
         selected_device = self.microChoose.currentData()
         selected_name = self.microChoose.currentText() or "Default"
+        selected_api = self.mProtocolChoose.currentData()
         server_port = self._parse_port(self.serverPortButton.text())
         sm.update_settings(
             {
                 "microphone": selected_name,
+                "host-api": selected_api,
                 "unnoised": self.noiseCheckbox.isChecked(),
                 "server-port": server_port,
                 "show-console": self.consoleCheckbox.isChecked(),
@@ -76,8 +80,9 @@ class PNGStreamerApp(QDialog):
         am.start_monitor(selected_device)
         self.serverPortButton.setText(str(server_port))
         _LOGGER.info(
-            "Settings applied: microphone=%s, noise=%s, port=%s, show_console=%s",
+            "Settings applied: microphone=%s, host-api=%s, noise=%s, port=%s, show_console=%s",
             selected_name,
+            selected_api,
             self.noiseCheckbox.isChecked(),
             server_port,
             self.consoleCheckbox.isChecked(),
@@ -162,11 +167,28 @@ class PNGStreamerApp(QDialog):
         sm.update_settings({"show-console": self.consoleCheckbox.isChecked()})
         _LOGGER.info("Console visibility toggled: show_console=%s", self.consoleCheckbox.isChecked())
 
+    def _populate_host_apis(self):
+        self.mProtocolChoose.blockSignals(True)
+        self.mProtocolChoose.clear()
+        apis = am.list_host_apis()
+        for api in apis:
+            self.mProtocolChoose.addItem(api.name, api.index)
+        self.mProtocolChoose.blockSignals(False)
+
     def _populate_microphones(self):
+        self.microChoose.blockSignals(True)
+        current_selection = self.microChoose.currentText()
         self.microChoose.clear()
-        devices = am.list_input_devices()
+        selected_api = self.mProtocolChoose.currentData()
+        devices = am.list_input_devices(host_api_index=selected_api)
         for device in devices:
             self.microChoose.addItem(device.name, device.device_id)
+
+        # Try to restore previous microphone selection if it exists in new API
+        idx = self.microChoose.findText(current_selection)
+        if idx != -1:
+            self.microChoose.setCurrentIndex(idx)
+        self.microChoose.blockSignals(False)
 
     def _populate_profiles(self):
         self.selectProfile.clear()
@@ -176,6 +198,28 @@ class PNGStreamerApp(QDialog):
 
     def _apply_settings_to_ui(self):
         settings = self.settings.get("settings", {})
+
+        # Restore Host API or set WASAPI as default
+        host_api = settings.get("host-api")
+        if host_api is not None:
+            target_api_index = self.mProtocolChoose.findData(host_api)
+        else:
+            # Try to find WASAPI by name if no setting is saved
+            target_api_index = self.mProtocolChoose.findText("Windows WASAPI")
+            if target_api_index == -1:
+                # Fallback to any WASAPI-like name
+                for i in range(self.mProtocolChoose.count()):
+                    if "WASAPI" in self.mProtocolChoose.itemText(i):
+                        target_api_index = i
+                        break
+
+        if target_api_index != -1:
+            self.mProtocolChoose.blockSignals(True)
+            self.mProtocolChoose.setCurrentIndex(target_api_index)
+            self.mProtocolChoose.blockSignals(False)
+            # Refresh microphones for this API
+            self._populate_microphones()
+
         microphone = settings.get("microphone", "Default")
         if isinstance(microphone, int):
             target_index = self.microChoose.findData(microphone)

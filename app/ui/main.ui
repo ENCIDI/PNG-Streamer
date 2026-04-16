@@ -29,9 +29,9 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>20</y>
+     <y>10</y>
      <width>551</width>
-     <height>141</height>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -41,8 +41,8 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>30</y>
-      <width>331</width>
+      <y>60</y>
+      <width>261</width>
       <height>22</height>
      </rect>
     </property>
@@ -51,7 +51,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>50</y>
+      <y>80</y>
       <width>131</width>
       <height>41</height>
      </rect>
@@ -64,7 +64,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>90</y>
+      <y>120</y>
       <width>141</width>
       <height>21</height>
      </rect>
@@ -77,13 +77,49 @@
     <property name="geometry">
      <rect>
       <x>160</x>
-      <y>90</y>
+      <y>120</y>
       <width>31</width>
       <height>21</height>
      </rect>
     </property>
     <property name="text">
      <string>0</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>290</x>
+      <y>40</y>
+      <width>61</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Протокол</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="mProtocolChoose">
+    <property name="geometry">
+     <rect>
+      <x>290</x>
+      <y>60</y>
+      <width>241</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>40</y>
+      <width>81</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Микрофон</string>
     </property>
    </widget>
   </widget>

@@ -1,9 +1,9 @@
 {
   "settings": {
-    "microphone": "Default",
+    "microphone": "Микрофон (fifine Microphone)",
     "unnoised": true,
-    "active-profile-id": 1,
+    "active-profile-id": 2,
     "server-port": 8642,
-    "show-console": true
+    "show-console": false
   }
 }
