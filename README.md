@@ -1,79 +1,161 @@
-﻿# PNG Streamer
+# 🎙️ PNG Streamer 🚀
 
-PNG Streamer — настольное приложение для стримеров: переключает PNG‑аватар по громкости микрофона и отдаёт виджет для OBS.
+![Python Version](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python&logoColor=white)
+![Framework](https://img.shields.io/badge/UI-PyQt6-brightgreen?logo=qt&logoColor=white)
+![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)
+![Server](https://img.shields.io/badge/Server-Uvicorn-purple?logo=uvicorn&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-## Возможности
-- Мониторинг громкости микрофона
-- Шумоподавление микрофона
-- Профили с порогами громкости для изображений
-- Моргание (blink) и список кадров для него
-- Веб‑виджет (FastAPI) для источника браузера в OBS
-- Переключение отображения консоли при старте
+**PNG Streamer** — это современное и гибкое настольное приложение для стримеров и контент-мейкеров. Оно позволяет в реальном времени переключать кадры вашего PNG-аватара (VTuber-оверлея) в зависимости от громкости голоса с микрофона, моргать глазами и генерировать интерактивный веб-виджет для плавной интеграции в OBS Studio в качестве Browser Source.
 
-## Запуск
-Быстрый старт:
-```powershell
-PNGStreamer.bat
-```
-
-Вручную:
-```powershell
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r app\requirements.txt
-python main.py
-```
-
-## Виджет для OBS
-Запустите сервер в приложении и используйте:
-```
-http://127.0.0.1:<port>/widget
-```
-как источник браузера.
-
-## Хранение данных
-- `app/storage/settings.json` — микрофон, шумоподавление, порт сервера, активный профиль, отображение консоли.
-- `app/storage/profiles.json` — профили и пороги громкости для изображений, настройки мигания.
-- `images/` — PNG‑файлы аватара.
+> [!NOTE]
+> 🇷🇺 **Интерфейс приложения доступен на русском языке!**  
+> 🇬🇧 **At the moment, the GUI is available only in Russian, but OBS widget and storage files are fully universal!**
 
 ---
 
-# PNG Streamer
+## 🌟 Ключевые возможности (Features)
 
-# At the moment, the App is available only in Russian!
+Помимо базового переключения картинок, PNG Streamer содержит множество продвинутых функций для тонкой настройки:
 
-PNG Streamer is a desktop app for streamers: it switches a PNG avatar based on microphone volume and serves a widget for OBS.
+*   🎤 **Мониторинг громкости микрофона:** Высокоточный захват и расчет RMS громкости в реальном времени с выводом текущих дБ на экран.
+*   🎧 **Выбор аудио-протоколов (Host API):** Поддержка переключения драйверов ввода прямо в интерфейсе (Windows WASAPI, MME, DirectSound). Рекомендуется использовать WASAPI для минимальной задержки!
+*   🤫 **Адаптивный шумоподавитель и Noise Gate:** Умный алгоритм непрерывно вычисляет фоновый уровень шума окружающей среды (`_noise_floor`) и автоматически адаптирует порог отсечки звука.
+*   📈 **Сглаживание движений (Volume Smoothing):** Применяется специальный фильтр сглаживания звука: **быстрая атака** (рот открывается мгновенно при начале речи) и **медленный релиз** (рот закрывается плавно, избегая неприятного мерцания кадров).
+*   🎭 **Множество профилей порогов громкости:** Возможность создавать неограниченное число профилей, настраивая до 10 различных диапазонов громкости с индивидуальными кадрами.
+*   🫨 **Эффект динамической тряски (Shake Level):** Для каждого порога громкости (например, при крике или громком смехе) можно задать уровень вибрации. OBS-виджет плавно смещает аватар по осям X и Y, используя красивую математическую модель синусоидального шума для создания живого эффекта дрожания.
+*   👁️ **Случайное моргание (Blink Engine):** Кастомизация частоты моргания (минимальный/максимальный интервал) и длительности закрытия глаз. При моргании программа автоматически подбирает закрытый аналог кадра для текущего уровня громкости (синхронизация по ID).
+*   🌐 **Высокопроизводительный FastAPI OBS-виджет:** Генерирует прозрачный HTML5-виджет. При отсутствии кадра отдает прозрачный пиксель 1x1, предотвращая появление черного экрана или битых изображений в OBS.
+*   📥 **Работа в трее (System Tray Icon):** Удобная иконка в трее Windows позволяет свернуть приложение, чтобы оно не мешало на панели задач во время трансляции.
+*   ⚡ **Умный автоматический запуск:** Запуск через `.bat` (Windows) или `.sh` (macOS/Linux) сам проверит и установит Python 3.13 через winget, создаст виртуальное окружение (`.venv`), установит зависимости (кэшируя их через хэш-суммы SHA256) и сможет работать в полностью фоновом невидимом режиме (`Hidden Console`).
 
-## Features
-- Microphone volume monitoring
-- Microphone noise suppression
-- Profiles with image volume thresholds
-- Blink settings and blink frames
-- FastAPI widget for OBS browser source
-- Console visibility toggle on startup
+---
 
-## Run
-Quick start:
+## 📦 Быстрый старт (Quick Start)
+
+### 💻 Способ 1: Автоматический (Рекомендуемый для Windows)
+Просто скачайте проект и дважды кликните по файлу:
 ```powershell
 PNGStreamer.bat
 ```
+*Скрипт автоматически подготовит окружение, установит зависимости и запустит программу.*
 
-Manual:
-```powershell
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r app\requirements.txt
-python main.py
+### 🛠️ Способ 2: Вручную через консоль
+1. Создайте виртуальное окружение и активируйте его:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\activate
+   ```
+2. Установите зависимости:
+   ```powershell
+   pip install -r app/requirements.txt
+   ```
+3. Запустите приложение:
+   ```powershell
+   python main.py
+   ```
+
+---
+
+## 🎬 Настройка в OBS Studio
+
+1. Откройте панель настроек в приложении PNG Streamer, выберите нужный микрофон, настройте профили и нажмите кнопку **«Запустить сервер»**.
+2. Скопируйте ссылку на виджет из соответствующего поля программы (по умолчанию `http://127.0.0.1:8642/widget`).
+3. В OBS Studio добавьте новый источник **«Браузер»** (Browser Source).
+4. Вставьте скопированную ссылку в поле URL.
+5. Установите нужную ширину и высоту (например, `800` на `800` или `1920` на `1080` в зависимости от размера аватара).
+6. Поставьте галочку **«Контролировать аудио с помощью OBS»** (при необходимости) и нажмите **«ОК»**.
+
+---
+
+## 📁 Структура папок и хранения данных
+
+```text
+PNGSteramer/
+├── PNGStreamer.bat               # Быстрый старт Windows
+├── PNGStreamer.sh                # Быстрый старт Linux/macOS
+├── main.py                       # Точка входа в программу
+├── images/                       # Сюда загружаются изображения аватара (*.png)
+│   ├── image0.png (Глаза закрыты / Молчание)
+│   ├── image1.png (Глаза закрыты / Говорение)
+│   ├── image2.png (Глаза открыты / Молчание)
+│   └── image3.png (Глаза открыты / Говорение)
+└── app/
+    ├── storage/                  # Хранилище конфигураций
+    │   ├── settings.json         # Общие настройки приложения
+    │   └── profiles.json         # Все профили стримеров, пороги и анимация
+    └── modules/                  # Логическое ядро приложения
 ```
 
-## OBS Widget
-Start the server in the app and use:
-```
-http://127.0.0.1:<port>/widget
-```
-as a browser source.
+---
 
-## Storage
-- `app/storage/settings.json` stores microphone, noise suppression, server port, active profile, console visibility.
-- `app/storage/profiles.json` stores profiles, image thresholds, and blink settings.
-- `images/` contains avatar PNG files.
+## ⚙️ Схема файлов конфигурации
+
+Для опытных пользователей доступно ручное редактирование файлов настроек в папке `app/storage/`.
+
+### 1. Системные настройки (`settings.json`)
+```json
+{
+  "settings": {
+    "microphone": "Default",      // Имя активного микрофона
+    "host-api": 3,                // ID аудио-интерфейса (например, WASAPI)
+    "unnoised": true,             // Включено ли шумоподавление (true/false)
+    "active-profile-id": 1,       // ID текущего загруженного профиля
+    "server-port": 8642,          // Порт FastAPI-сервера для виджета
+    "show-console": false         // Показывать ли черное окно консоли при старте
+  }
+}
+```
+
+### 2. Настройка профилей (`profiles.json`)
+Позволяет описывать фазы движения губ и дрожания:
+```json
+{
+  "profiles": [
+    {
+      "id": 1,
+      "name": "sample",
+      "images": [
+        {
+          "id": 0,
+          "path-to-image": "image3.png",   // Картинка молчания
+          "volume-level": 0,               // Активируется при звуке >= 0%
+          "shake-level": 0                 // Без тряски
+        },
+        {
+          "id": 1,
+          "path-to-image": "image2.png",   // Обычный разговор
+          "volume-level": 30,              // Звук >= 30%
+          "shake-level": 1                 // Легкое покачивание
+        },
+        {
+          "id": 2,
+          "path-to-image": "image2.png",   // Крик / Смех
+          "volume-level": 80,              // Звук >= 80%
+          "shake-level": 99                // Сильная тряска/вибрация
+        }
+      ],
+      "blink": {
+        "interval-min-ms": 2000,           // Мигать не чаще чем раз в 2 сек
+        "interval-max-ms": 5000,           // Мигать не реже чем раз в 5 сек
+        "duration-ms": 100                 // Длительность закрытых глаз (100 мс)
+      },
+      "blink-images": [
+        {
+          "id": 0,
+          "path-to-image": "image0.png"    // Кадр закрытых глаз для ID=0
+        },
+        {
+          "id": 1,
+          "path-to-image": "image1.png"    // Кадр закрытых глаз для ID=1
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 📜 Лицензия
+Этот проект распространяется под лицензией **MIT License**. Вы можете свободно модифицировать и использовать его в любых личных или коммерческих целях (включая трансляции и видеоролики).
