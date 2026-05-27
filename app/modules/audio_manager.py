@@ -6,10 +6,11 @@ from typing import List, Optional
 
 
 @dataclass
-class MicrophoneDevice:
+class AudioDevice:
     device_id: Optional[int]
     name: str
     hostapi: Optional[int] = None
+    is_output: bool = False
 
 
 @dataclass
@@ -53,30 +54,48 @@ def list_host_apis() -> List[HostAPI]:
     return apis
 
 
-def list_input_devices(host_api_index: Optional[int] = None) -> List[MicrophoneDevice]:
-    devices = [MicrophoneDevice(device_id=None, name="Default")]
+def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice]:
+    devices = [AudioDevice(device_id=None, name="Default")]
     if not _sounddevice_available():
         if not _speech_recognition_available():
             return devices
         try:
             speech_recognition = importlib.import_module("speech_recognition")
             for idx, name in enumerate(speech_recognition.Microphone.list_microphone_names()):
-                devices.append(MicrophoneDevice(device_id=idx, name=name))
+                devices.append(AudioDevice(device_id=idx, name=f"🎤 {name}"))
         except Exception:
             return devices
         return devices
     try:
         sounddevice = importlib.import_module("sounddevice")
-        for idx, info in enumerate(sounddevice.query_devices()):
+        all_devices = list(sounddevice.query_devices())
+        
+        # 1. Microphones (input devices)
+        for idx, info in enumerate(all_devices):
             if info.get("max_input_channels", 0) > 0:
                 api_idx = info.get("hostapi")
                 if host_api_index is not None and api_idx != host_api_index:
                     continue
                 devices.append(
-                    MicrophoneDevice(
+                    AudioDevice(
                         device_id=idx,
-                        name=info.get("name", f"Input {idx}"),
+                        name=f"🎤 {info.get('name', f'Input {idx}')}",
                         hostapi=api_idx,
+                    )
+                )
+        
+        # 2. Speakers (output devices)
+        for idx, info in enumerate(all_devices):
+            if info.get("max_output_channels", 0) > 0:
+                api_idx = info.get("hostapi")
+                if host_api_index is not None and api_idx != host_api_index:
+                    continue
+                devices.append(
+                    AudioDevice(
+                        device_id=idx,
+                        name=f"🔊 {info.get('name', f'Output {idx}')}",
+                        hostapi=api_idx,
+                        is_output=True,
                     )
                 )
     except Exception:
@@ -167,15 +186,32 @@ def start_monitor(device_id: Optional[int] = None) -> None:
         else:
             _update_volume(_smooth_volume(level))
 
+    # If it's an output device, try to find loopback for WASAPI
+    actual_device = device_id
+    if device_id is not None:
+        try:
+            info = sounddevice.query_devices(device_id)
+            if info.get("max_input_channels", 0) == 0 and info.get("max_output_channels", 0) > 0:
+                # It's an output device. Try to find a loopback version in the same API.
+                name = info.get("name")
+                api = info.get("hostapi")
+                for i, other in enumerate(sounddevice.query_devices()):
+                    if other.get("hostapi") == api and other.get("max_input_channels", 0) > 0:
+                        if name in other.get("name") or "Loopback" in other.get("name"):
+                            actual_device = i
+                            break
+        except Exception:
+            pass
+
     try:
         _stream = sounddevice.InputStream(
-            device=device_id,
+            device=actual_device,
             channels=1,
             callback=callback,
         )
         _stream.start()
     except Exception:
-        if device_id is not None:
+        if actual_device is not None:
             try:
                 _stream = sounddevice.InputStream(
                     device=None,

@@ -35,7 +35,7 @@
     </rect>
    </property>
    <property name="title">
-    <string>Настройки микрофона</string>
+    <string>Настройки звука</string>
    </property>
    <widget class="QComboBox" name="microChoose">
     <property name="geometry">
@@ -114,12 +114,12 @@
      <rect>
       <x>10</x>
       <y>40</y>
-      <width>81</width>
+      <width>261</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Микрофон</string>
+     <string>Захватываемое звуковое устройство</string>
     </property>
    </widget>
   </widget>

@@ -40,7 +40,7 @@ class PNGStreamerApp(QDialog):
         self.startServerButton.clicked.connect(self.start_server)
         self.stopServerButton.clicked.connect(self.stop_server)
 
-        self.mProtocolChoose.currentIndexChanged.connect(self._populate_microphones)
+        self.mProtocolChoose.currentIndexChanged.connect(self._populate_audio_devices)
         self.microChoose.currentIndexChanged.connect(self.micro_changed)
         self.noiseCheckbox.stateChanged.connect(self.noise_toggled)
         self.selectProfile.currentIndexChanged.connect(self.profile_changed)
@@ -48,7 +48,7 @@ class PNGStreamerApp(QDialog):
 
         self.settings = sm.load_settings()
         self._populate_host_apis()
-        self._populate_microphones()
+        self._populate_audio_devices()
         self._populate_profiles()
         self._apply_settings_to_ui()
         self._start_volume_updates()
@@ -175,16 +175,16 @@ class PNGStreamerApp(QDialog):
             self.mProtocolChoose.addItem(api.name, api.index)
         self.mProtocolChoose.blockSignals(False)
 
-    def _populate_microphones(self):
+    def _populate_audio_devices(self):
         self.microChoose.blockSignals(True)
         current_selection = self.microChoose.currentText()
         self.microChoose.clear()
         selected_api = self.mProtocolChoose.currentData()
-        devices = am.list_input_devices(host_api_index=selected_api)
+        devices = am.list_audio_devices(host_api_index=selected_api)
         for device in devices:
             self.microChoose.addItem(device.name, device.device_id)
 
-        # Try to restore previous microphone selection if it exists in new API
+        # Try to restore previous selection if it exists in new API
         idx = self.microChoose.findText(current_selection)
         if idx != -1:
             self.microChoose.setCurrentIndex(idx)
@@ -217,8 +217,8 @@ class PNGStreamerApp(QDialog):
             self.mProtocolChoose.blockSignals(True)
             self.mProtocolChoose.setCurrentIndex(target_api_index)
             self.mProtocolChoose.blockSignals(False)
-            # Refresh microphones for this API
-            self._populate_microphones()
+            # Refresh audio devices for this API
+            self._populate_audio_devices()
 
         microphone = settings.get("microphone", "Default")
         if isinstance(microphone, int):

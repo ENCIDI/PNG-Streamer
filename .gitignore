@@ -2,5 +2,5 @@
 .idea
 .venv
 __pycache__
-logs/*
-.antigravitycli
+logs
+*.log
