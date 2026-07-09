@@ -240,7 +240,12 @@ def build(page: ft.Page) -> ft.Control:
                 },
             }
             if is_new:
-                created = sm.create_profile(**new_profile_data)
+                created = sm.create_profile(
+                    name=new_profile_data["name"],
+                    images=new_profile_data["images"],
+                    blink=new_profile_data["blink"],
+                    blink_images=new_profile_data["blink-images"],
+                )
                 sm.update_settings({"active-image-profile-id": created.get("id")})
                 state["selected_id"] = created.get("id")
                 _notify(i18n.t("common.notify_created", name=new_profile_data["name"]))
