@@ -6,7 +6,7 @@
 ![Server](https://img.shields.io/badge/Server-Uvicorn-purple?logo=uvicorn&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-**🇬🇧 [English](#english)&nbsp;&nbsp;|&nbsp;&nbsp;🇷🇺 [Русский](#русский)**
+**EN [English](#english)&nbsp;&nbsp;|&nbsp;&nbsp;RU [Русский](#русский)**
 
 ---
 
