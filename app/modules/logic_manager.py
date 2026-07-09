@@ -24,9 +24,9 @@ def list_available_images() -> List[str]:
     return sorted(images)
 
 
-def get_active_profile() -> Optional[Dict[str, Any]]:
+def get_active_image_profile() -> Optional[Dict[str, Any]]:
     settings = sm.load_settings().get("settings", {})
-    active_id = settings.get("active-profile-id", 1)
+    active_id = settings.get("active-image-profile-id", 1)
     try:
         active_id = int(active_id)
     except (TypeError, ValueError):
@@ -34,7 +34,34 @@ def get_active_profile() -> Optional[Dict[str, Any]]:
     return sm.get_profile_by_id(active_id)
 
 
-def _resolve_image_path(image_value: str) -> Optional[Path]:
+def get_active_sound_profile() -> Optional[Dict[str, Any]]:
+    settings = sm.load_settings().get("settings", {})
+    active_id = settings.get("active-sound-profile-id", 1)
+    try:
+        active_id = int(active_id)
+    except (TypeError, ValueError):
+        active_id = 1
+    return sm.get_sound_profile_by_id(active_id)
+
+
+def apply_sound_profile(profile: Dict[str, Any]) -> None:
+    am.set_noise_suppression(bool(profile.get("unnoised", False)))
+    am.set_noise_algorithm(profile.get("noise-algorithm", "adaptive"))
+    am.set_noise_threshold(profile.get("noise-threshold", 15.0))
+    am.set_compressor(bool(profile.get("compressor-enabled", False)))
+    am.set_compressor_threshold(profile.get("compressor-threshold", 60.0))
+    am.set_compressor_ratio(profile.get("compressor-ratio", 4.0))
+    am.start_monitor(profile.get("microphone"))
+
+
+def activate_sound_profile(profile_id: int) -> None:
+    sm.update_settings({"active-sound-profile-id": profile_id})
+    profile = sm.get_sound_profile_by_id(profile_id)
+    if profile:
+        apply_sound_profile(profile)
+
+
+def resolve_image_path(image_value: str) -> Optional[Path]:
     if not image_value:
         return None
     candidate = Path(image_value)
@@ -96,7 +123,7 @@ def pick_image_for_volume(profile: Dict[str, Any], volume: float) -> Optional[Pa
     selected = _pick_image_entry(profile, volume)
     if not selected:
         return None
-    return _resolve_image_path(str(selected.get("path-to-image", "")))
+    return resolve_image_path(str(selected.get("path-to-image", "")))
 
 
 def _normalize_blink_images(images: List[Dict[str, Any]]) -> Dict[int, str]:
@@ -168,18 +195,18 @@ def _pick_blink_image(profile: Dict[str, Any], image_id: Optional[int]) -> Optio
     path_value = blink_images.get(int(image_id)) if blink_images else None
     if not path_value:
         return None
-    return _resolve_image_path(path_value)
+    return resolve_image_path(path_value)
 
 
 def get_current_image_state(volume: Optional[float] = None) -> Tuple[Optional[Path], int]:
-    profile = get_active_profile()
+    profile = get_active_image_profile()
     if not profile:
         return None, 0
     current_volume = am.get_current_volume() if volume is None else volume
     selected = _pick_image_entry(profile, current_volume)
     if not selected:
         return None, 0
-    base_path = _resolve_image_path(str(selected.get("path-to-image", "")))
+    base_path = resolve_image_path(str(selected.get("path-to-image", "")))
     if base_path is None:
         return None, 0
     try:

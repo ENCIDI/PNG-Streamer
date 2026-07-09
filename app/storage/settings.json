@@ -4,6 +4,7 @@
     "unnoised": true,
     "active-profile-id": 1,
     "server-port": 8642,
-    "show-console": true
+    "show-console": true,
+    "active-sound-profile-id": 1
   }
 }

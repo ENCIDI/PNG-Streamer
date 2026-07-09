@@ -172,7 +172,6 @@ def _widget_html() -> str:
             shakeSpeed = 2.2;
           }
         } catch (err) {
-          // ignore network errors
         }
         img.src = "/image.png?ts=" + Date.now();
       };

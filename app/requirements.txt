@@ -3,4 +3,6 @@ sounddevice
 SpeechRecognition
 fastapi
 uvicorn
-PyQt6
+flet==0.85.2
+pystray
+pillow

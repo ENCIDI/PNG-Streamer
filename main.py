@@ -1,4 +1,4 @@
-from app.modules import logging_manager as logm, ui_manager as wm
+from app.modules import logging_manager as logm, flet_ui_manager as wm
 
 
 logm.init_logging()

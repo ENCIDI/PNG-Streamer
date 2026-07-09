@@ -24,9 +24,16 @@ _current_volume = 0.0
 current_volume = 0.0
 _noise_floor = 0.0
 _noise_suppression = False
+_noise_algorithm = "adaptive"
+_noise_threshold = 15.0
+_compressor_enabled = False
+_compressor_threshold = 60.0
+_compressor_ratio = 4.0
 _smoothed_volume = 0.0
 _stream = None
 _selected_device = None
+
+NOISE_ALGORITHMS = ("adaptive", "fixed")
 
 
 def _sounddevice_available() -> bool:
@@ -69,8 +76,7 @@ def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice
     try:
         sounddevice = importlib.import_module("sounddevice")
         all_devices = list(sounddevice.query_devices())
-        
-        # 1. Microphones (input devices)
+
         for idx, info in enumerate(all_devices):
             if info.get("max_input_channels", 0) > 0:
                 api_idx = info.get("hostapi")
@@ -83,8 +89,7 @@ def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice
                         hostapi=api_idx,
                     )
                 )
-        
-        # 2. Speakers (output devices)
+
         for idx, info in enumerate(all_devices):
             if info.get("max_output_channels", 0) > 0:
                 api_idx = info.get("hostapi")
@@ -107,6 +112,36 @@ def set_noise_suppression(enabled: bool) -> None:
     global _noise_suppression
     with _lock:
         _noise_suppression = enabled
+
+
+def set_noise_algorithm(name: str) -> None:
+    global _noise_algorithm
+    with _lock:
+        _noise_algorithm = name if name in NOISE_ALGORITHMS else "adaptive"
+
+
+def set_noise_threshold(value: float) -> None:
+    global _noise_threshold
+    with _lock:
+        _noise_threshold = max(0.0, min(float(value), 100.0))
+
+
+def set_compressor(enabled: bool) -> None:
+    global _compressor_enabled
+    with _lock:
+        _compressor_enabled = enabled
+
+
+def set_compressor_threshold(value: float) -> None:
+    global _compressor_threshold
+    with _lock:
+        _compressor_threshold = max(0.0, min(float(value), 100.0))
+
+
+def set_compressor_ratio(value: float) -> None:
+    global _compressor_ratio
+    with _lock:
+        _compressor_ratio = max(1.0, min(float(value), 20.0))
 
 
 def get_current_volume() -> float:
@@ -146,12 +181,27 @@ def _apply_noise_gate(level: float) -> float:
     return max(min(adjusted, 100.0), 0.0)
 
 
+def _apply_fixed_gate(level: float, threshold: float) -> float:
+    if level <= threshold:
+        return 0.0
+    adjusted = (level - threshold) * 100.0 / max(100.0 - threshold, 1.0)
+    return max(min(adjusted, 100.0), 0.0)
+
+
+def _apply_compressor(level: float, threshold: float, ratio: float) -> float:
+    if level <= threshold:
+        return level
+    excess = level - threshold
+    compressed = threshold + excess / max(ratio, 1.0)
+    return max(min(compressed, 100.0), 0.0)
+
+
 def _smooth_volume(target: float) -> float:
     global _smoothed_volume
     if target > _smoothed_volume:
-        alpha = 0.6  # faster attack
+        alpha = 0.6
     else:
-        alpha = 0.85  # slower release
+        alpha = 0.85
     _smoothed_volume = alpha * _smoothed_volume + (1 - alpha) * target
     return _smoothed_volume
 
@@ -180,19 +230,20 @@ def start_monitor(device_id: Optional[int] = None) -> None:
         db = 20 * math.log10(rms_value)
         level = max(min((db + 60) / 60 * 100, 100), 0)
         if _noise_suppression:
-            _update_noise_floor(level)
-            gated = _apply_noise_gate(level)
-            _update_volume(_smooth_volume(gated))
-        else:
-            _update_volume(_smooth_volume(level))
+            if _noise_algorithm == "fixed":
+                level = _apply_fixed_gate(level, _noise_threshold)
+            else:
+                _update_noise_floor(level)
+                level = _apply_noise_gate(level)
+        if _compressor_enabled:
+            level = _apply_compressor(level, _compressor_threshold, _compressor_ratio)
+        _update_volume(_smooth_volume(level))
 
-    # If it's an output device, try to find loopback for WASAPI
     actual_device = device_id
     if device_id is not None:
         try:
             info = sounddevice.query_devices(device_id)
             if info.get("max_input_channels", 0) == 0 and info.get("max_output_channels", 0) > 0:
-                # It's an output device. Try to find a loopback version in the same API.
                 name = info.get("name")
                 api = info.get("hostapi")
                 for i, other in enumerate(sounddevice.query_devices()):

@@ -1,0 +1,18 @@
+{
+  "sound-profiles": [
+    {
+      "id": 1,
+      "name": "default",
+      "host-api": 2,
+      "microphone": null,
+      "microphone-name": "Default",
+      "unnoised": true,
+      "effects": [],
+      "noise-algorithm": "adaptive",
+      "noise-threshold": 50.44569986104093,
+      "compressor-enabled": false,
+      "compressor-threshold": 60.0,
+      "compressor-ratio": 4.0
+    }
+  ]
+}
