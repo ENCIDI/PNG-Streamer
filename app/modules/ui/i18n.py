@@ -64,6 +64,10 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "images.col_shake": "Тряска",
         "tray.show": "Показать",
         "tray.quit": "Выход",
+        "window.minimize": "Свернуть",
+        "window.maximize": "Развернуть",
+        "window.restore": "Восстановить",
+        "window.close": "Закрыть",
     },
     "en": {
         "nav.launch": "Launch",
@@ -119,6 +123,10 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "images.col_shake": "Shake",
         "tray.show": "Show",
         "tray.quit": "Quit",
+        "window.minimize": "Minimize",
+        "window.maximize": "Maximize",
+        "window.restore": "Restore",
+        "window.close": "Close",
     },
 }
 
