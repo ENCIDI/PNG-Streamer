@@ -8,15 +8,20 @@ from app.modules import (
     logic_manager as lm,
     storage_manager as sm,
 )
-from app.modules.ui import image_settings_view, launch_view, sound_settings_view, tray
+from app.modules.ui import i18n, image_settings_view, launch_view, sound_settings_view, tray
 
 _LOGGER = logm.get_logger(__name__)
 
 _ICON_PATH = Path(__file__).resolve().parent.parent / "ui" / "PNGStreamer.ico"
+_FLAGS_DIR = Path(__file__).resolve().parent.parent / "ui" / "flags"
 
 
 def _icon_path() -> Optional[str]:
     return str(_ICON_PATH) if _ICON_PATH.exists() else None
+
+
+def _flag_path(lang: str) -> str:
+    return str(_FLAGS_DIR / f"{lang}.png")
 
 
 def _blob(
@@ -56,7 +61,28 @@ def _background_geometry() -> ft.Control:
     )
 
 
+def _nav_destinations() -> list[ft.NavigationRailDestination]:
+    return [
+        ft.NavigationRailDestination(
+            icon=ft.Icons.PLAY_ARROW_OUTLINED,
+            selected_icon=ft.Icons.PLAY_ARROW,
+            label=i18n.t("nav.launch"),
+        ),
+        ft.NavigationRailDestination(
+            icon=ft.Icons.MIC_OUTLINED,
+            selected_icon=ft.Icons.MIC,
+            label=i18n.t("nav.sound"),
+        ),
+        ft.NavigationRailDestination(
+            icon=ft.Icons.IMAGE_OUTLINED,
+            selected_icon=ft.Icons.IMAGE,
+            label=i18n.t("nav.images"),
+        ),
+    ]
+
+
 def main(page: ft.Page) -> None:
+    i18n.init_language()
     page.title = "PNG Streamer"
     page.theme_mode = ft.ThemeMode.DARK
     page.theme = ft.Theme(color_scheme_seed=ft.Colors.DEEP_PURPLE)
@@ -104,28 +130,37 @@ def main(page: ft.Page) -> None:
     def _on_nav_change(e: ft.ControlEvent) -> None:
         _show(nav_rail.selected_index)
 
+    language_button = ft.TextButton(
+        content=ft.Container(
+            padding=4,
+            content=ft.Image(
+                src=_flag_path(i18n.get_language()),
+                width=28,
+                height=20,
+                fit=ft.BoxFit.CONTAIN,
+                border_radius=3,
+            ),
+        ),
+        tooltip="RU / EN",
+    )
+
+    def _on_language_toggle(e: ft.ControlEvent) -> None:
+        i18n.set_language("en" if i18n.get_language() == "ru" else "ru")
+        language_button.content.content.src = _flag_path(i18n.get_language())
+        nav_rail.destinations = _nav_destinations()
+        _show(nav_rail.selected_index)
+        page.update()
+
+    language_button.on_click = _on_language_toggle
+
     nav_rail = ft.NavigationRail(
         selected_index=0,
         label_type=ft.NavigationRailLabelType.ALL,
         min_width=100,
         bgcolor=ft.Colors.TRANSPARENT,
-        destinations=[
-            ft.NavigationRailDestination(
-                icon=ft.Icons.PLAY_ARROW_OUTLINED,
-                selected_icon=ft.Icons.PLAY_ARROW,
-                label="Запуск",
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.Icons.MIC_OUTLINED,
-                selected_icon=ft.Icons.MIC,
-                label="Звук",
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.Icons.IMAGE_OUTLINED,
-                selected_icon=ft.Icons.IMAGE,
-                label="Изображения",
-            ),
-        ],
+        destinations=_nav_destinations(),
+        trailing=language_button,
+        pin_trailing_to_bottom=True,
         on_change=_on_nav_change,
     )
 

@@ -8,14 +8,16 @@ from app.modules import (
     logic_manager as lm,
     storage_manager as sm,
 )
-from app.modules.ui import style, volume_meter
+from app.modules.ui import i18n, style, volume_meter
 
 _LOGGER = logm.get_logger(__name__)
 
-_ALGORITHM_OPTIONS = [
-    ft.DropdownOption(key="adaptive", text="Адаптивный (по фоновому шуму)"),
-    ft.DropdownOption(key="fixed", text="Фиксированный порог"),
-]
+
+def _algorithm_options() -> list[ft.DropdownOption]:
+    return [
+        ft.DropdownOption(key="adaptive", text=i18n.t("sound.algo_adaptive")),
+        ft.DropdownOption(key="fixed", text=i18n.t("sound.algo_fixed")),
+    ]
 
 
 def build(page: ft.Page) -> ft.Control:
@@ -24,7 +26,7 @@ def build(page: ft.Page) -> ft.Control:
     profile_list = ft.ListView(spacing=8, expand=True)
     editor_host = ft.Container(
         expand=True,
-        content=ft.Text("Выберите профиль слева или создайте новый", italic=True),
+        content=ft.Text(i18n.t("common.empty_state"), italic=True),
     )
 
     def _active_profile_id() -> Optional[int]:
@@ -62,20 +64,18 @@ def build(page: ft.Page) -> ft.Control:
 
         def _on_activate(e: ft.ControlEvent) -> None:
             lm.activate_sound_profile(profile_id)
-            _notify(f"Активирован профиль «{profile.get('name')}»")
+            _notify(i18n.t("common.notify_activated", name=profile.get("name")))
             _refresh_list()
 
         def _on_delete(e: ft.ControlEvent) -> None:
             sm.delete_sound_profile(profile_id)
             if state["selected_id"] == profile_id:
                 state["selected_id"] = None
-                editor_host.content = ft.Text(
-                    "Выберите профиль слева или создайте новый", italic=True
-                )
+                editor_host.content = ft.Text(i18n.t("common.empty_state"), italic=True)
             remaining = sm.list_sound_profiles()
             if active_id == profile_id and remaining:
                 lm.activate_sound_profile(remaining[0].get("id"))
-            _notify(f"Профиль «{profile.get('name')}» удалён")
+            _notify(i18n.t("common.notify_deleted", name=profile.get("name")))
             _refresh_list()
 
         return ft.Container(
@@ -88,13 +88,25 @@ def build(page: ft.Page) -> ft.Control:
                     ft.Column(
                         [
                             ft.Text(profile.get("name", "profile"), weight=ft.FontWeight.BOLD),
-                            ft.Text("Активен" if is_active else "", size=11, color=ft.Colors.GREEN_300),
+                            ft.Text(
+                                i18n.t("common.active_badge") if is_active else "",
+                                size=11,
+                                color=ft.Colors.GREEN_300,
+                            ),
                         ],
                         expand=True,
                         spacing=2,
                     ),
-                    ft.IconButton(icon=ft.Icons.CHECK_CIRCLE_OUTLINE, tooltip="Активировать", on_click=_on_activate),
-                    ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Удалить", on_click=_on_delete),
+                    ft.IconButton(
+                        icon=ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        tooltip=i18n.t("common.activate_tooltip"),
+                        on_click=_on_activate,
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        tooltip=i18n.t("common.delete_tooltip"),
+                        on_click=_on_delete,
+                    ),
                 ]
             ),
         )
@@ -120,25 +132,27 @@ def build(page: ft.Page) -> ft.Control:
     def _build_editor(profile: Optional[Dict[str, Any]]) -> ft.Control:
         is_new = profile is None
         name_field = ft.TextField(
-            label="Название профиля",
-            value=profile.get("name", "") if profile else "Новый профиль",
+            label=i18n.t("common.profile_name"),
+            value=profile.get("name", "") if profile else i18n.t("common.new_profile"),
         )
-        host_api_dropdown = ft.Dropdown(label="Протокол", expand=True)
-        mic_dropdown = ft.Dropdown(label="Микрофон", expand=True)
+        host_api_dropdown = ft.Dropdown(label=i18n.t("sound.protocol"), expand=True)
+        mic_dropdown = ft.Dropdown(label=i18n.t("sound.microphone"), expand=True)
         noise_checkbox = ft.Checkbox(
-            label="Шумоподавление",
+            label=i18n.t("sound.noise_suppression"),
             value=bool(profile.get("unnoised", False)) if profile else False,
         )
         algorithm_dropdown = ft.Dropdown(
-            label="Алгоритм шумоподавления",
-            options=_ALGORITHM_OPTIONS,
+            label=i18n.t("sound.noise_algorithm"),
+            options=_algorithm_options(),
             value=profile.get("noise-algorithm", "adaptive") if profile else "adaptive",
             expand=True,
             disabled=not (profile.get("unnoised", False) if profile else False),
         )
         threshold_value = float(profile.get("noise-threshold", 15.0)) if profile else 15.0
         threshold_visible = algorithm_dropdown.value == "fixed" and not algorithm_dropdown.disabled
-        threshold_label = ft.Text(f"Порог: {int(threshold_value)}", visible=threshold_visible)
+        threshold_label = ft.Text(
+            i18n.t("sound.threshold", value=int(threshold_value)), visible=threshold_visible
+        )
         threshold_slider = ft.Slider(
             min=0,
             max=100,
@@ -146,18 +160,24 @@ def build(page: ft.Page) -> ft.Control:
             expand=True,
             visible=threshold_visible,
             on_change=lambda e: (
-                setattr(threshold_label, "value", f"Порог: {int(threshold_slider.value)}"),
+                setattr(
+                    threshold_label,
+                    "value",
+                    i18n.t("sound.threshold", value=int(threshold_slider.value)),
+                ),
                 threshold_label.update(),
             ),
         )
 
         compressor_checkbox = ft.Checkbox(
-            label="Включён",
+            label=i18n.t("sound.enabled"),
             value=bool(profile.get("compressor-enabled", False)) if profile else False,
         )
         compressor_threshold_value = float(profile.get("compressor-threshold", 60.0)) if profile else 60.0
         compressor_ratio_value = float(profile.get("compressor-ratio", 4.0)) if profile else 4.0
-        compressor_threshold_label = ft.Text(f"Порог сжатия: {int(compressor_threshold_value)}", size=12)
+        compressor_threshold_label = ft.Text(
+            i18n.t("sound.compressor_threshold", value=int(compressor_threshold_value)), size=12
+        )
         compressor_threshold_slider = ft.Slider(
             min=0,
             max=100,
@@ -167,12 +187,14 @@ def build(page: ft.Page) -> ft.Control:
                 setattr(
                     compressor_threshold_label,
                     "value",
-                    f"Порог сжатия: {int(compressor_threshold_slider.value)}",
+                    i18n.t("sound.compressor_threshold", value=int(compressor_threshold_slider.value)),
                 ),
                 compressor_threshold_label.update(),
             ),
         )
-        compressor_ratio_label = ft.Text(f"Соотношение: {compressor_ratio_value:.0f}:1", size=12)
+        compressor_ratio_label = ft.Text(
+            i18n.t("sound.compressor_ratio", value=f"{compressor_ratio_value:.0f}"), size=12
+        )
         compressor_ratio_slider = ft.Slider(
             min=1,
             max=20,
@@ -182,7 +204,7 @@ def build(page: ft.Page) -> ft.Control:
                 setattr(
                     compressor_ratio_label,
                     "value",
-                    f"Соотношение: {compressor_ratio_slider.value:.0f}:1",
+                    i18n.t("sound.compressor_ratio", value=f"{compressor_ratio_slider.value:.0f}"),
                 ),
                 compressor_ratio_label.update(),
             ),
@@ -260,7 +282,7 @@ def build(page: ft.Page) -> ft.Control:
                 sm.update_settings({"active-sound-profile-id": created.get("id")})
                 lm.apply_sound_profile(created)
                 state["selected_id"] = created.get("id")
-                _notify(f"Профиль «{name}» создан")
+                _notify(i18n.t("common.notify_created", name=name))
             else:
                 updated = dict(profile)
                 updated.update(
@@ -280,7 +302,7 @@ def build(page: ft.Page) -> ft.Control:
                 sm.update_sound_profile(updated)
                 if _active_profile_id() == updated.get("id"):
                     lm.apply_sound_profile(updated)
-                _notify(f"Профиль «{name}» сохранён")
+                _notify(i18n.t("common.notify_saved", name=name))
 
             _refresh_list()
             _select(state["selected_id"])
@@ -295,7 +317,7 @@ def build(page: ft.Page) -> ft.Control:
                     ft.Row(
                         [
                             ft.Icon(ft.Icons.GRAPHIC_EQ, color=ft.Colors.DEEP_PURPLE_200),
-                            ft.Text("Компрессор", weight=ft.FontWeight.BOLD),
+                            ft.Text(i18n.t("sound.compressor"), weight=ft.FontWeight.BOLD),
                             ft.Container(expand=True),
                             compressor_checkbox,
                         ]
@@ -314,7 +336,7 @@ def build(page: ft.Page) -> ft.Control:
             scroll=ft.ScrollMode.AUTO,
             controls=[
                 ft.Text(
-                    "Новый профиль" if is_new else f"Редактирование: {profile.get('name')}",
+                    i18n.t("common.new_profile") if is_new else i18n.t("common.editing", name=profile.get("name")),
                     size=18,
                     weight=ft.FontWeight.BOLD,
                 ),
@@ -323,7 +345,7 @@ def build(page: ft.Page) -> ft.Control:
                 ft.Column(
                     spacing=6,
                     controls=[
-                        ft.Text("Уровень микрофона", size=12),
+                        ft.Text(i18n.t("sound.mic_level"), size=12),
                         volume_meter.build(page, text_size=20, bar_width=None),
                     ],
                 ),
@@ -333,7 +355,7 @@ def build(page: ft.Page) -> ft.Control:
                 threshold_label,
                 ft.Divider(),
                 compressor_panel,
-                ft.Row([ft.Button("Сохранить", icon=ft.Icons.SAVE, on_click=_save)]),
+                ft.Row([ft.Button(i18n.t("common.save"), icon=ft.Icons.SAVE, on_click=_save)]),
             ],
         )
 
@@ -357,8 +379,8 @@ def build(page: ft.Page) -> ft.Control:
                 ft.Column(
                     width=260,
                     controls=[
-                        ft.Text("Профили звука", size=18, weight=ft.FontWeight.BOLD),
-                        ft.Button("Создать профиль", icon=ft.Icons.ADD, on_click=_on_create),
+                        ft.Text(i18n.t("sound.title"), size=18, weight=ft.FontWeight.BOLD),
+                        ft.Button(i18n.t("common.create_profile"), icon=ft.Icons.ADD, on_click=_on_create),
                         profile_list,
                     ],
                 ),

@@ -6,6 +6,7 @@ import pystray
 from PIL import Image
 
 from app.modules import audio_manager as am, logging_manager as logm, web_manager as wm
+from app.modules.ui import i18n
 
 _LOGGER = logm.get_logger(__name__)
 
@@ -41,8 +42,8 @@ def start(page: ft.Page, icon_path: Optional[str]) -> None:
         icon=Image.open(icon_path),
         title="PNG Streamer",
         menu=pystray.Menu(
-            pystray.MenuItem("Показать", _on_show, default=True),
-            pystray.MenuItem("Выход", _on_quit),
+            pystray.MenuItem(lambda item: i18n.t("tray.show"), _on_show, default=True),
+            pystray.MenuItem(lambda item: i18n.t("tray.quit"), _on_quit),
         ),
     )
     threading.Thread(target=_icon.run, daemon=True).start()

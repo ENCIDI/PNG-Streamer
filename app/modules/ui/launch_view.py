@@ -8,7 +8,7 @@ from app.modules import (
     storage_manager as sm,
     web_manager as wm,
 )
-from app.modules.ui import style, volume_meter
+from app.modules.ui import i18n, style, volume_meter
 
 _LOGGER = logm.get_logger(__name__)
 
@@ -30,7 +30,7 @@ def build(page: ft.Page) -> ft.Control:
     image_profiles = sm.list_profiles()
 
     sound_dropdown = ft.Dropdown(
-        label="Профиль звука",
+        label=i18n.t("launch.sound_profile"),
         options=[
             ft.DropdownOption(key=str(p.get("id")), text=p.get("name", "profile"))
             for p in sound_profiles
@@ -40,7 +40,7 @@ def build(page: ft.Page) -> ft.Control:
     )
 
     image_dropdown = ft.Dropdown(
-        label="Профиль изображений",
+        label=i18n.t("launch.image_profile"),
         options=[
             ft.DropdownOption(key=str(p.get("id")), text=p.get("name", "profile"))
             for p in image_profiles
@@ -50,33 +50,33 @@ def build(page: ft.Page) -> ft.Control:
     )
 
     port_field = ft.TextField(
-        label="Порт сервера",
+        label=i18n.t("launch.server_port"),
         value=str(settings.get("server-port", 8642)),
         width=150,
     )
     status_text = ft.Text(
-        "Остановлен",
+        i18n.t("launch.status_stopped"),
         color=ft.Colors.RED_400,
         weight=ft.FontWeight.BOLD,
     )
     widget_url_field = ft.TextField(
-        label="Адрес виджета",
+        label=i18n.t("launch.widget_url"),
         value="",
         read_only=True,
         expand=True,
     )
     console_checkbox = ft.Checkbox(
-        label="Отображать консоль при запуске",
+        label=i18n.t("launch.show_console"),
         value=bool(settings.get("show-console", False)),
     )
 
     def _refresh_server_status() -> None:
         if wm.is_running():
-            status_text.value = "Запущен"
+            status_text.value = i18n.t("launch.status_running")
             status_text.color = ft.Colors.GREEN_400
             widget_url_field.value = f"http://127.0.0.1:{_parse_port(port_field.value)}/widget"
         else:
-            status_text.value = "Остановлен"
+            status_text.value = i18n.t("launch.status_stopped")
             status_text.color = ft.Colors.RED_400
             widget_url_field.value = ""
         page.update()
@@ -96,7 +96,7 @@ def build(page: ft.Page) -> ft.Control:
         sm.update_settings({"server-port": port})
         started, status = wm.start_server("127.0.0.1", port)
         if not started and status != "already_running":
-            page.show_dialog(ft.SnackBar(ft.Text("Не удалось запустить сервер")))
+            page.show_dialog(ft.SnackBar(ft.Text(i18n.t("launch.server_start_failed"))))
         _refresh_server_status()
 
     def _on_stop_server(e: ft.ControlEvent) -> None:
@@ -118,22 +118,22 @@ def build(page: ft.Page) -> ft.Control:
         ft.Column(
             spacing=24,
             controls=[
-                ft.Text("Запуск", size=22, weight=ft.FontWeight.BOLD),
+                ft.Text(i18n.t("nav.launch"), size=22, weight=ft.FontWeight.BOLD),
                 ft.Row([sound_dropdown, image_dropdown]),
                 ft.Column(
                     spacing=6,
                     controls=[
-                        ft.Text("Текущая громкость"),
+                        ft.Text(i18n.t("launch.current_volume")),
                         volume_row,
                     ],
                 ),
                 ft.Divider(),
-                ft.Text("Сервер OBS-виджета", size=16, weight=ft.FontWeight.BOLD),
-                ft.Row([port_field, ft.Text("Статус:"), status_text]),
+                ft.Text(i18n.t("launch.server_section"), size=16, weight=ft.FontWeight.BOLD),
+                ft.Row([port_field, ft.Text(i18n.t("launch.status_label")), status_text]),
                 ft.Row(
                     [
-                        ft.Button("Запустить", icon=ft.Icons.PLAY_ARROW, on_click=_on_start_server),
-                        ft.Button("Остановить", icon=ft.Icons.STOP, on_click=_on_stop_server),
+                        ft.Button(i18n.t("launch.start"), icon=ft.Icons.PLAY_ARROW, on_click=_on_start_server),
+                        ft.Button(i18n.t("launch.stop"), icon=ft.Icons.STOP, on_click=_on_stop_server),
                     ]
                 ),
                 widget_url_field,

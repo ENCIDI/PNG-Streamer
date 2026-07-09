@@ -13,3 +13,5 @@ app/storage/logs/
 
 .DS_Store
 Thumbs.db
+
+.claude

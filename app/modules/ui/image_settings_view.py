@@ -7,7 +7,7 @@ from app.modules import (
     logic_manager as lm,
     storage_manager as sm,
 )
-from app.modules.ui import style
+from app.modules.ui import i18n, style
 
 _LOGGER = logm.get_logger(__name__)
 
@@ -116,7 +116,7 @@ def build(page: ft.Page) -> ft.Control:
     profile_list = ft.ListView(spacing=8, expand=True)
     editor_host = ft.Container(
         expand=True,
-        content=ft.Text("Выберите профиль слева или создайте новый", italic=True),
+        content=ft.Text(i18n.t("common.empty_state"), italic=True),
     )
 
     def _active_profile_id() -> Optional[int]:
@@ -154,20 +154,18 @@ def build(page: ft.Page) -> ft.Control:
 
         def _on_activate(e: ft.ControlEvent) -> None:
             sm.update_settings({"active-image-profile-id": profile_id})
-            _notify(f"Активирован профиль «{profile.get('name')}»")
+            _notify(i18n.t("common.notify_activated", name=profile.get("name")))
             _refresh_list()
 
         def _on_delete(e: ft.ControlEvent) -> None:
             sm.delete_profile(profile_id)
             if state["selected_id"] == profile_id:
                 state["selected_id"] = None
-                editor_host.content = ft.Text(
-                    "Выберите профиль слева или создайте новый", italic=True
-                )
+                editor_host.content = ft.Text(i18n.t("common.empty_state"), italic=True)
             remaining = sm.list_profiles()
             if active_id == profile_id and remaining:
                 sm.update_settings({"active-image-profile-id": remaining[0].get("id")})
-            _notify(f"Профиль «{profile.get('name')}» удалён")
+            _notify(i18n.t("common.notify_deleted", name=profile.get("name")))
             _refresh_list()
 
         return ft.Container(
@@ -180,13 +178,25 @@ def build(page: ft.Page) -> ft.Control:
                     ft.Column(
                         [
                             ft.Text(profile.get("name", "profile"), weight=ft.FontWeight.BOLD),
-                            ft.Text("Активен" if is_active else "", size=11, color=ft.Colors.GREEN_300),
+                            ft.Text(
+                                i18n.t("common.active_badge") if is_active else "",
+                                size=11,
+                                color=ft.Colors.GREEN_300,
+                            ),
                         ],
                         expand=True,
                         spacing=2,
                     ),
-                    ft.IconButton(icon=ft.Icons.CHECK_CIRCLE_OUTLINE, tooltip="Активировать", on_click=_on_activate),
-                    ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Удалить", on_click=_on_delete),
+                    ft.IconButton(
+                        icon=ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        tooltip=i18n.t("common.activate_tooltip"),
+                        on_click=_on_activate,
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        tooltip=i18n.t("common.delete_tooltip"),
+                        on_click=_on_delete,
+                    ),
                 ]
             ),
         )
@@ -197,13 +207,19 @@ def build(page: ft.Page) -> ft.Control:
         image_options = [ft.DropdownOption(key=name, text=name) for name in image_names]
 
         name_field = ft.TextField(
-            label="Название профиля",
-            value=profile.get("name", "") if profile else "Новый профиль",
+            label=i18n.t("common.profile_name"),
+            value=profile.get("name", "") if profile else i18n.t("common.new_profile"),
         )
         blink_settings = profile.get("blink", {}) if profile else {}
-        blink_min = ft.TextField(label="Мин (мс)", value=str(blink_settings.get("interval-min-ms", "2000")), width=110)
-        blink_max = ft.TextField(label="Макс (мс)", value=str(blink_settings.get("interval-max-ms", "5000")), width=110)
-        blink_dur = ft.TextField(label="Длит. (мс)", value=str(blink_settings.get("duration-ms", "100")), width=110)
+        blink_min = ft.TextField(
+            label=i18n.t("images.blink_min"), value=str(blink_settings.get("interval-min-ms", "2000")), width=110
+        )
+        blink_max = ft.TextField(
+            label=i18n.t("images.blink_max"), value=str(blink_settings.get("interval-max-ms", "5000")), width=110
+        )
+        blink_dur = ft.TextField(
+            label=i18n.t("images.blink_dur"), value=str(blink_settings.get("duration-ms", "100")), width=110
+        )
 
         images_by_id = {img.get("id"): img for img in (profile.get("images", []) if profile else [])}
         blink_by_id = {img.get("id"): img for img in (profile.get("blink-images", []) if profile else [])}
@@ -227,24 +243,24 @@ def build(page: ft.Page) -> ft.Control:
                 created = sm.create_profile(**new_profile_data)
                 sm.update_settings({"active-image-profile-id": created.get("id")})
                 state["selected_id"] = created.get("id")
-                _notify(f"Профиль «{new_profile_data['name']}» создан")
+                _notify(i18n.t("common.notify_created", name=new_profile_data["name"]))
             else:
                 new_profile_data["id"] = profile["id"]
                 sm.update_profile(new_profile_data)
-                _notify(f"Профиль «{new_profile_data['name']}» сохранён")
+                _notify(i18n.t("common.notify_saved", name=new_profile_data["name"]))
 
             _refresh_list()
             _select(state["selected_id"])
 
         header_row = ft.Row(
             [
-                ft.Text("#", width=20),
-                ft.Text("Изображение", width=105),
+                ft.Text(i18n.t("images.col_index"), width=20),
+                ft.Text(i18n.t("images.col_image"), width=105),
                 ft.Text("", width=_THUMB_SIZE),
-                ft.Text("Моргание", width=105),
+                ft.Text(i18n.t("images.col_blink"), width=105),
                 ft.Text("", width=_THUMB_SIZE),
-                ft.Text("Порог", width=60),
-                ft.Text("Тряска", width=120),
+                ft.Text(i18n.t("images.col_threshold"), width=60),
+                ft.Text(i18n.t("images.col_shake"), width=120),
             ],
             spacing=8,
         )
@@ -254,7 +270,7 @@ def build(page: ft.Page) -> ft.Control:
             expand=True,
             controls=[
                 ft.Text(
-                    "Новый профиль" if is_new else f"Редактирование: {profile.get('name')}",
+                    i18n.t("common.new_profile") if is_new else i18n.t("common.editing", name=profile.get("name")),
                     size=18,
                     weight=ft.FontWeight.BOLD,
                 ),
@@ -268,7 +284,7 @@ def build(page: ft.Page) -> ft.Control:
                     scroll=ft.ScrollMode.ALWAYS,
                     spacing=6,
                 ),
-                ft.Row([ft.Button("Сохранить", icon=ft.Icons.SAVE, on_click=_save)]),
+                ft.Row([ft.Button(i18n.t("common.save"), icon=ft.Icons.SAVE, on_click=_save)]),
             ],
         )
 
@@ -292,8 +308,8 @@ def build(page: ft.Page) -> ft.Control:
                 ft.Column(
                     width=260,
                     controls=[
-                        ft.Text("Профили изображений", size=18, weight=ft.FontWeight.BOLD),
-                        ft.Button("Создать профиль", icon=ft.Icons.ADD, on_click=_on_create),
+                        ft.Text(i18n.t("images.title"), size=18, weight=ft.FontWeight.BOLD),
+                        ft.Button(i18n.t("common.create_profile"), icon=ft.Icons.ADD, on_click=_on_create),
                         profile_list,
                     ],
                 ),

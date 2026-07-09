@@ -3,16 +3,16 @@
     {
       "id": 1,
       "name": "default",
-      "host-api": 2,
+      "host-api": null,
       "microphone": null,
       "microphone-name": "Default",
-      "unnoised": true,
-      "effects": [],
+      "unnoised": false,
       "noise-algorithm": "adaptive",
-      "noise-threshold": 50.44569986104093,
+      "noise-threshold": 15.0,
       "compressor-enabled": false,
       "compressor-threshold": 60.0,
-      "compressor-ratio": 4.0
+      "compressor-ratio": 4.0,
+      "effects": []
     }
   ]
 }
