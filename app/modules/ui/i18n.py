@@ -26,6 +26,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "launch.stop": "Остановить",
         "launch.widget_url": "Адрес виджета",
         "launch.show_console": "Отображать консоль при запуске",
+        "launch.minimize_to_tray": "Сворачивать в трей при закрытии",
         "launch.server_start_failed": "Не удалось запустить сервер",
         "common.create_profile": "Создать профиль",
         "common.activate_tooltip": "Активировать",
@@ -85,6 +86,7 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "launch.stop": "Stop",
         "launch.widget_url": "Widget address",
         "launch.show_console": "Show console on startup",
+        "launch.minimize_to_tray": "Minimize to tray on close",
         "launch.server_start_failed": "Failed to start the server",
         "common.create_profile": "Create profile",
         "common.activate_tooltip": "Activate",
@@ -131,6 +133,23 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
 }
 
 
+def _detect_unix_locale_name() -> str:
+    # POSIX/gettext priority order: LANGUAGE (colon-separated list) beats
+    # LC_ALL, which beats LC_MESSAGES, which beats LANG, which beats LC_CTYPE.
+    # These env vars are what actually carries the user's language on Linux -
+    # locale.getlocale() only reflects them if setlocale() was already called,
+    # which most GUI launchers never do, so relying on it alone left every
+    # Linux user detected as "en".
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG", "LC_CTYPE"):
+        value = os.environ.get(var, "")
+        if not value:
+            continue
+        value = value.split(":")[0].strip()
+        if value and value not in ("C", "POSIX"):
+            return value
+    return locale.getlocale()[0] or ""
+
+
 def detect_system_language() -> str:
     lang_code = ""
     country_code = ""
@@ -141,7 +160,7 @@ def detect_system_language() -> str:
             lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
             locale_name = locale.windows_locale.get(lcid, "")
         else:
-            locale_name = locale.getlocale()[0] or os.environ.get("LANG", "")
+            locale_name = _detect_unix_locale_name()
         if locale_name:
             parts = locale_name.replace("-", "_").split("_")
             lang_code = parts[0].lower()

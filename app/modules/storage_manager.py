@@ -16,6 +16,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "active-sound-profile-id": 1,
         "server-port": 8642,
         "show-console": False,
+        "minimize-to-tray-on-close": True,
     }
 }
 

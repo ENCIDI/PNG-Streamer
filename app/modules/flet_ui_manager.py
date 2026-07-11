@@ -137,11 +137,23 @@ def main(page: ft.Page) -> None:
     page.window.min_width = 1210
     page.window.min_height = 750
     page.window.resizable = True
-    page.window.title_bar_hidden = True
-    page.window.frameless = True
-    page.window.shadow = False
-    page.window.bgcolor = ft.Colors.TRANSPARENT
-    page.bgcolor = ft.Colors.TRANSPARENT
+
+    # Flet's frameless/title_bar_hidden mode is unreliable on the Linux
+    # embedder: the window manager keeps drawing its own native decorations
+    # on top of/around our custom title bar (looks like two windows stacked),
+    # and the custom minimize/maximize/drag-to-resize controls don't work
+    # against most Linux WMs. So on Linux we keep the native window chrome
+    # and skip our custom title bar and resize handles entirely.
+    use_custom_chrome = page.platform != ft.PagePlatform.LINUX
+    if use_custom_chrome:
+        page.window.title_bar_hidden = True
+        page.window.frameless = True
+        page.window.shadow = False
+        page.window.bgcolor = ft.Colors.TRANSPARENT
+        page.bgcolor = ft.Colors.TRANSPARENT
+    else:
+        page.window.bgcolor = "#0B0710"
+        page.bgcolor = "#0B0710"
 
     icon_path = _icon_path()
     if icon_path:
@@ -154,9 +166,16 @@ def main(page: ft.Page) -> None:
         page.window.skip_task_bar = True
         page.update()
 
+    def _handle_close_request() -> None:
+        close_settings = sm.load_settings().get("settings", {})
+        if close_settings.get("minimize-to-tray-on-close", True):
+            _hide_to_tray()
+        else:
+            page.run_task(tray.quit_app, page)
+
     def _on_window_event(e: ft.WindowEvent) -> None:
         if e.type == ft.WindowEventType.CLOSE:
-            _hide_to_tray()
+            _handle_close_request()
 
     page.window.on_event = _on_window_event
 
@@ -230,7 +249,7 @@ def main(page: ft.Page) -> None:
         page.update()
 
     def _on_close_click(e: ft.ControlEvent) -> None:
-        _hide_to_tray()
+        _handle_close_request()
 
     minimize_button = ft.IconButton(
         icon=ft.Icons.REMOVE,
@@ -280,23 +299,29 @@ def main(page: ft.Page) -> None:
         ),
     )
 
+    content_controls: list[ft.Control] = []
+    if use_custom_chrome:
+        content_controls.append(title_bar)
+    content_controls.append(ft.Row([nav_rail, ft.VerticalDivider(width=1), body], expand=True))
+
     content_column = ft.Column(
         spacing=0,
         expand=True,
-        controls=[
-            title_bar,
-            ft.Row([nav_rail, ft.VerticalDivider(width=1), body], expand=True),
-        ],
+        controls=content_controls,
     )
+
+    stack_controls: list[ft.Control] = [_background_geometry(), content_column]
+    if use_custom_chrome:
+        stack_controls.extend(_resize_handles(page))
 
     page.add(
         ft.Container(
             expand=True,
             bgcolor="#0B0710",
-            border_radius=16,
+            border_radius=16 if use_custom_chrome else 0,
             clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
             content=ft.Stack(
-                [_background_geometry(), content_column, *_resize_handles(page)],
+                stack_controls,
                 expand=True,
             ),
         )

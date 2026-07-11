@@ -13,6 +13,14 @@ _LOGGER = logm.get_logger(__name__)
 _icon: Optional[pystray.Icon] = None
 
 
+async def quit_app(page: ft.Page) -> None:
+    wm.stop_server()
+    am.stop_monitor()
+    if _icon is not None:
+        _icon.stop()
+    await page.window.destroy()
+
+
 def start(page: ft.Page, icon_path: Optional[str]) -> None:
     global _icon
     if not icon_path:
@@ -27,15 +35,8 @@ def start(page: ft.Page, icon_path: Optional[str]) -> None:
     def _on_show(icon, item) -> None:
         page.run_task(_restore, page)
 
-    async def _quit(page: ft.Page) -> None:
-        wm.stop_server()
-        am.stop_monitor()
-        if _icon is not None:
-            _icon.stop()
-        await page.window.destroy()
-
     def _on_quit(icon, item) -> None:
-        page.run_task(_quit, page)
+        page.run_task(quit_app, page)
 
     _icon = pystray.Icon(
         "PNGStreamer",

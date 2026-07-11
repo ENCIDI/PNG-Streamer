@@ -69,6 +69,10 @@ def build(page: ft.Page) -> ft.Control:
         label=i18n.t("launch.show_console"),
         value=bool(settings.get("show-console", False)),
     )
+    tray_checkbox = ft.Checkbox(
+        label=i18n.t("launch.minimize_to_tray"),
+        value=bool(settings.get("minimize-to-tray-on-close", True)),
+    )
 
     def _refresh_server_status() -> None:
         if wm.is_running():
@@ -106,9 +110,13 @@ def build(page: ft.Page) -> ft.Control:
     def _on_console_changed(e: ft.ControlEvent) -> None:
         sm.update_settings({"show-console": console_checkbox.value})
 
+    def _on_tray_changed(e: ft.ControlEvent) -> None:
+        sm.update_settings({"minimize-to-tray-on-close": tray_checkbox.value})
+
     sound_dropdown.on_select = _on_sound_profile_select
     image_dropdown.on_select = _on_image_profile_select
     console_checkbox.on_change = _on_console_changed
+    tray_checkbox.on_change = _on_tray_changed
 
     volume_row = volume_meter.build(page)
 
@@ -137,7 +145,7 @@ def build(page: ft.Page) -> ft.Control:
                     ]
                 ),
                 widget_url_field,
-                console_checkbox,
+                ft.Row([console_checkbox, tray_checkbox]),
             ],
         ),
     )
