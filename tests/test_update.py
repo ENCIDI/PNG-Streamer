@@ -98,3 +98,21 @@ def test_frozen_builds_are_eligible(monkeypatch, platform):
     monkeypatch.setenv("APPIMAGE", "/tmp/PNGStreamer.AppImage")
 
     assert um.is_eligible()
+
+
+def test_failed_check_is_retried_on_next_start(env, monkeypatch):
+    from app.modules import storage_manager as sm
+
+    sm.init_storage()
+    monkeypatch.setattr(um.paths, "is_frozen", lambda: True)
+    monkeypatch.setattr(um.sys, "platform", "win32")
+
+    def _fail():
+        raise OSError("certificate verify failed")
+
+    monkeypatch.setattr(um, "fetch_releases", _fail)
+    result = um.check()
+
+    assert result.error
+    assert sm.load_settings()["settings"]["last-update-check"] == 0
+    assert um.check_due()

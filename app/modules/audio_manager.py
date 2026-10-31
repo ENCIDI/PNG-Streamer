@@ -247,6 +247,20 @@ def _smooth_volume(target: float) -> float:
     return _smoothed_volume
 
 
+def _open_input_stream(device: Optional[int], callback):
+    # Mono is enough for a volume level, but some ALSA devices only open in stereo;
+    # the callback averages over all channels either way.
+    error: Optional[Exception] = None
+    for channels in (1, 2):
+        try:
+            stream = sounddevice.InputStream(device=device, channels=channels, callback=callback)
+            stream.start()
+            return stream
+        except sounddevice.PortAudioError as exc:
+            error = exc
+    raise error
+
+
 def start_monitor(device_id: Optional[int] = None) -> None:
     global _stream, _selected_device, _noise_floor, _smoothed_volume, _monitor_error
     stop_monitor()
@@ -294,23 +308,13 @@ def start_monitor(device_id: Optional[int] = None) -> None:
             pass
 
     try:
-        _stream = sounddevice.InputStream(
-            device=actual_device,
-            channels=1,
-            callback=callback,
-        )
-        _stream.start()
+        _stream = _open_input_stream(actual_device, callback)
     except Exception:
         _LOGGER.exception("Failed to open input device %s", actual_device)
         _stream = None
         if actual_device is not None:
             try:
-                _stream = sounddevice.InputStream(
-                    device=None,
-                    channels=1,
-                    callback=callback,
-                )
-                _stream.start()
+                _stream = _open_input_stream(None, callback)
                 _monitor_error = "fallback"
             except Exception:
                 _LOGGER.exception("Failed to open default input device")

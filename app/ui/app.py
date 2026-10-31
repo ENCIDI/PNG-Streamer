@@ -95,6 +95,18 @@ class Application:
         logm.get_logger(__name__).info("Application exit")
 
 
+def _self_test_tls() -> bool:
+    """The update check needs a CA bundle inside the build (see update_manager)."""
+    from app.modules import update_manager as um
+
+    try:
+        um._ssl_context()
+    except Exception:
+        logm.get_logger(__name__).exception("Self-test: no usable CA certificates")
+        return False
+    return True
+
+
 def _self_test_server(state: AppState) -> bool:
     import socket
     import urllib.request
@@ -152,7 +164,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             for index in range(len(application.window.screens)):
                 application.window.show_page(index)
                 qt_app.processEvents()
-            ok = _self_test_server(application.state)
+            ok = _self_test_server(application.state) and _self_test_tls()
             logger.info("Self-test %s", "passed" if ok else "FAILED")
             application.quit(confirm=False)
             if not ok:

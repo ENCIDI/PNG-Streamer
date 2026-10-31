@@ -35,3 +35,39 @@ def test_windows_order_is_unchanged(monkeypatch):
     inputs = [d.name for d in am.list_audio_devices(0) if not d.is_output]
 
     assert inputs[1] == "HDA Intel PCH: ALC892 Analog (hw:0,0)"
+
+
+class _StereoOnlySoundDevice:
+    class PortAudioError(Exception):
+        pass
+
+    def __init__(self):
+        self.opened = []
+
+    def InputStream(self, device, channels, callback):
+        if channels == 1:
+            raise self.PortAudioError("Invalid number of channels")
+        self.opened.append((device, channels))
+        return _FakeStream()
+
+
+class _FakeStream:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def close(self):
+        pass
+
+
+def test_falls_back_to_stereo_when_mono_is_rejected(monkeypatch):
+    fake = _StereoOnlySoundDevice()
+    monkeypatch.setattr(am, "sounddevice", fake)
+
+    am.start_monitor(None)
+
+    assert fake.opened == [(None, 2)]
+    assert am.get_monitor_error() is None
+    am.stop_monitor()

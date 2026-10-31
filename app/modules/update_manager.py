@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import ssl
 import stat
 import subprocess
 import sys
@@ -18,6 +19,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import certifi
 
 from app import paths
 from app.modules import logging_manager as logm, storage_manager as sm
@@ -115,6 +118,19 @@ def parse_sums(text: str) -> Dict[str, str]:
     return sums
 
 
+def _ssl_context() -> ssl.SSLContext:
+    # A frozen build's OpenSSL looks for CA certificates at the build machine's
+    # paths, which do not exist on most Linux distributions. Trust the system
+    # store where it is found and the bundled certifi store everywhere.
+    context = ssl.create_default_context()
+    context.load_verify_locations(cafile=certifi.where())
+    return context
+
+
+def _open(url: str):
+    return urllib.request.urlopen(_request(url), timeout=_TIMEOUT, context=_ssl_context())
+
+
 def _request(url: str) -> urllib.request.Request:
     return urllib.request.Request(
         url,
@@ -123,7 +139,7 @@ def _request(url: str) -> urllib.request.Request:
 
 
 def fetch_releases() -> List[Dict[str, Any]]:
-    with urllib.request.urlopen(_request(RELEASES_URL), timeout=_TIMEOUT) as response:
+    with _open(RELEASES_URL) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -143,8 +159,8 @@ def check() -> CheckResult:
     except Exception as error:  # network errors must never break the app
         _LOGGER.warning("Update check failed: %s", error)
         return CheckResult(eligible=True, error=str(error))
-    finally:
-        sm.update_settings({"last-update-check": int(time.time())})
+    # Only successful checks count, so a failed one is retried on the next start.
+    sm.update_settings({"last-update-check": int(time.time())})
     is_release, update = find_update(releases, __version__, platform_key())
     if update:
         _LOGGER.info("Update available: %s", update.version)
@@ -168,7 +184,7 @@ def download(
     progress: Callable[[int], None],
     cancelled: Callable[[], bool] = lambda: False,
 ) -> Path:
-    with urllib.request.urlopen(_request(info.sums_url), timeout=_TIMEOUT) as response:
+    with _open(info.sums_url) as response:
         expected = parse_sums(response.read().decode("utf-8")).get(info.asset_name)
     if not expected:
         raise UpdateError(f"{info.asset_name} is missing from {SUMS_ASSET}")
@@ -180,7 +196,7 @@ def download(
     target_dir.mkdir(parents=True, exist_ok=True)
     partial = target_dir / f"{info.asset_name}.part"
     digest = hashlib.sha256()
-    with urllib.request.urlopen(_request(info.asset_url), timeout=_TIMEOUT) as response, partial.open("wb") as out:
+    with _open(info.asset_url) as response, partial.open("wb") as out:
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
         while True:
