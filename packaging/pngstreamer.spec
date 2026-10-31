@@ -60,6 +60,10 @@ a = Analysis(
 )
 # Software OpenGL fallback and Qt's own translations are not used by a widgets app.
 a.binaries = [entry for entry in a.binaries if "opengl32sw" not in entry[0]]
+# alsa-lib must come from the user's system: a bundled copy looks for its plugins
+# (pipewire, pulse) at the build distro's paths and then cannot see PipeWire or
+# PulseAudio devices on other distributions.
+a.binaries = [entry for entry in a.binaries if not Path(entry[0]).name.startswith("libasound.so")]
 a.datas = [entry for entry in a.datas if "PySide6/translations" not in entry[0].replace("\\", "/")]
 
 pyz = PYZ(a.pure)

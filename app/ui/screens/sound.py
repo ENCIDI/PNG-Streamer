@@ -1,4 +1,5 @@
 import copy
+import sys
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtGui import QFont
@@ -13,6 +14,14 @@ from app.ui.widgets.common import Card, Combo, LabeledSlider, SwitchRow, muted
 from app.ui.widgets.meter import LevelMeter
 
 _DEFAULT_DEVICE = -1
+_IS_LINUX = sys.platform.startswith("linux")
+_PREFERRED_API = "ALSA" if _IS_LINUX else "WASAPI"
+
+
+def host_api_label(name: str) -> str:
+    if _IS_LINUX and name == "ALSA":
+        return "ALSA · PipeWire / PulseAudio"
+    return name
 
 
 class SoundScreen(ProfileScreen):
@@ -37,6 +46,9 @@ class SoundScreen(ProfileScreen):
         grid.setColumnStretch(0, 2)
         grid.setColumnStretch(1, 3)
         self.input_card.body.addLayout(grid)
+        self.linux_hint = muted("", "faint", wrap=True)
+        self.linux_hint.setVisible(_IS_LINUX)
+        self.input_card.body.addWidget(self.linux_hint)
         level_row = QHBoxLayout()
         self.level_label = muted()
         self.level_value = QLabel("0")
@@ -121,8 +133,8 @@ class SoundScreen(ProfileScreen):
         apis = am.list_host_apis()
         host_api = profile.get("host-api")
         if host_api is None:
-            host_api = next((a.index for a in apis if "WASAPI" in a.name), apis[0].index if apis else None)
-        self.api_combo.set_items([(a.name, a.index) for a in apis], host_api)
+            host_api = next((a.index for a in apis if _PREFERRED_API in a.name), apis[0].index if apis else None)
+        self.api_combo.set_items([(host_api_label(a.name), a.index) for a in apis], host_api)
         self._fill_devices(profile.get("microphone"), profile.get("microphone-name", "Default"))
         self.noise_switch.setChecked(bool(profile.get("unnoised")))
         self.algorithm_combo.setCurrentIndex(max(0, self.algorithm_combo.findData(profile.get("noise-algorithm"))))
@@ -233,6 +245,7 @@ class SoundScreen(ProfileScreen):
         self.api_label.setText(i18n.t("sound.host_api"))
         self.device_label.setText(i18n.t("sound.microphone"))
         self.level_label.setText(i18n.t("sound.level"))
+        self.linux_hint.setText(i18n.t("sound.linux_hint"))
         self.noise_switch.set_text(i18n.t("sound.noise"), i18n.t("sound.noise_hint"))
         self.algorithm_label.setText(i18n.t("sound.algorithm"))
         loading, self._loading = self._loading, True

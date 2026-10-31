@@ -139,6 +139,7 @@ def run(argv: Optional[List[str]] = None) -> int:
         return 0
 
     sm.init_storage()
+    am.log_environment()
     i18n.init_language()
     if paths.is_frozen():
         autostart.refresh()

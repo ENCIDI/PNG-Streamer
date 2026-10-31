@@ -75,6 +75,21 @@ _selected_device = None
 _monitor_error: Optional[str] = None
 
 NOISE_ALGORITHMS = ("adaptive", "fixed")
+_LINUX_PREFERRED = ("pipewire", "pulse", "default", "sysdefault")
+
+
+def log_environment() -> None:
+    """Write the audio setup to the log; essential for remote microphone issues."""
+    if sounddevice is None:
+        _LOGGER.warning("Audio: sounddevice unavailable")
+        return
+    try:
+        _LOGGER.info("Audio: %s", sounddevice.get_portaudio_version()[1])
+        for api in list_host_apis():
+            names = [d.name for d in list_audio_devices(api.index) if d.device_id is not None and not d.is_output]
+            _LOGGER.info("Audio: host API %s: %s inputs %s", api.name, len(names), names)
+    except Exception:
+        _LOGGER.exception("Audio: failed to describe devices")
 
 
 def list_host_apis() -> List[HostAPI]:
@@ -108,6 +123,13 @@ def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice
                         hostapi=api_idx,
                     )
                 )
+
+        if sys.platform.startswith("linux"):
+            # PipeWire/PulseAudio are reached through these ALSA virtual devices;
+            # show them first, raw hw: devices are usually busy under a sound server.
+            inputs = devices[1:]
+            inputs.sort(key=lambda d: _LINUX_PREFERRED.index(d.name) if d.name in _LINUX_PREFERRED else len(_LINUX_PREFERRED))
+            devices[1:] = inputs
 
         for idx, info in enumerate(all_devices):
             if info.get("max_output_channels", 0) > 0:

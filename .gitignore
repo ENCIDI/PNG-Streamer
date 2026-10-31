@@ -32,3 +32,6 @@ desktop.ini
 /data/
 /app/storage/
 /images/
+
+# Local notes
+CHANGELOG.md
