@@ -61,10 +61,24 @@ jobs:
           ./dist/PNGStreamer/PNGStreamer.exe --self-test
           rm -rf dist/PNGStreamer/data
       - name: Installer
+        # PowerShell, not Git Bash: bash would rewrite "/DAppVersion=..." into a path.
+        shell: pwsh
         run: |
-          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          if [ ! -f "$ISCC" ]; then choco install innosetup -y --no-progress; fi
-          "$ISCC" "/DAppVersion=${{ needs.version.outputs.version }}" packaging/windows/PNGStreamer.iss
+          function Find-Iscc {
+            $cmd = Get-Command iscc.exe -ErrorAction SilentlyContinue
+            if ($cmd) { return $cmd.Source }
+            Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          }
+          $iscc = Find-Iscc
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $iscc = Find-Iscc
+          }
+          if (-not $iscc) { throw "ISCC.exe not found" }
+          Write-Host "Using $iscc"
+          & $iscc "/DAppVersion=${{ needs.version.outputs.version }}" "packaging\windows\PNGStreamer.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: windows
