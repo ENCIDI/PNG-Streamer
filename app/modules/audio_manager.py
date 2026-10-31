@@ -1,8 +1,48 @@
-import importlib
 import math
+import sys
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional
+
+from app import paths
+from app.modules import logging_manager as logm
+
+_LOGGER = logm.get_logger(__name__)
+
+
+def _use_bundled_portaudio() -> None:
+    # sounddevice locates PortAudio with ctypes.util.find_library, which cannot
+    # see libraries bundled inside an AppImage/PyInstaller build. Fall back to
+    # the bundled copy when the system has none.
+    bundled = Path(getattr(sys, "_MEIPASS", "")) / "libportaudio.so.2"
+    if not (sys.platform.startswith("linux") and paths.is_frozen() and bundled.exists()):
+        return
+    import ctypes.util
+
+    original = ctypes.util.find_library
+
+    def _find_library(name: str) -> Optional[str]:
+        found = original(name)
+        if found is None and name == "portaudio":
+            return str(bundled)
+        return found
+
+    ctypes.util.find_library = _find_library
+
+
+_use_bundled_portaudio()
+
+try:
+    import numpy
+except ImportError:
+    numpy = None
+
+try:
+    import sounddevice
+except (ImportError, OSError):
+    _LOGGER.exception("sounddevice is unavailable, microphone input disabled")
+    sounddevice = None
 
 
 @dataclass
@@ -32,28 +72,16 @@ _compressor_ratio = 4.0
 _smoothed_volume = 0.0
 _stream = None
 _selected_device = None
+_monitor_error: Optional[str] = None
 
 NOISE_ALGORITHMS = ("adaptive", "fixed")
 
 
-def _sounddevice_available() -> bool:
-    return importlib.util.find_spec("sounddevice") is not None
-
-
-def _numpy_available() -> bool:
-    return importlib.util.find_spec("numpy") is not None
-
-
-def _speech_recognition_available() -> bool:
-    return importlib.util.find_spec("speech_recognition") is not None
-
-
 def list_host_apis() -> List[HostAPI]:
     apis = []
-    if not _sounddevice_available():
+    if sounddevice is None:
         return apis
     try:
-        sounddevice = importlib.import_module("sounddevice")
         for idx, info in enumerate(sounddevice.query_hostapis()):
             apis.append(HostAPI(index=idx, name=info.get("name", f"API {idx}")))
     except Exception:
@@ -63,18 +91,9 @@ def list_host_apis() -> List[HostAPI]:
 
 def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice]:
     devices = [AudioDevice(device_id=None, name="Default")]
-    if not _sounddevice_available():
-        if not _speech_recognition_available():
-            return devices
-        try:
-            speech_recognition = importlib.import_module("speech_recognition")
-            for idx, name in enumerate(speech_recognition.Microphone.list_microphone_names()):
-                devices.append(AudioDevice(device_id=idx, name=f"🎤 {name}"))
-        except Exception:
-            return devices
+    if sounddevice is None:
         return devices
     try:
-        sounddevice = importlib.import_module("sounddevice")
         all_devices = list(sounddevice.query_devices())
 
         for idx, info in enumerate(all_devices):
@@ -85,7 +104,7 @@ def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice
                 devices.append(
                     AudioDevice(
                         device_id=idx,
-                        name=f"🎤 {info.get('name', f'Input {idx}')}",
+                        name=info.get("name", f"Input {idx}"),
                         hostapi=api_idx,
                     )
                 )
@@ -98,7 +117,7 @@ def list_audio_devices(host_api_index: Optional[int] = None) -> List[AudioDevice
                 devices.append(
                     AudioDevice(
                         device_id=idx,
-                        name=f"🔊 {info.get('name', f'Output {idx}')}",
+                        name=info.get("name", f"Output {idx}"),
                         hostapi=api_idx,
                         is_output=True,
                     )
@@ -207,22 +226,20 @@ def _smooth_volume(target: float) -> float:
 
 
 def start_monitor(device_id: Optional[int] = None) -> None:
-    global _stream, _selected_device, _noise_floor, _smoothed_volume
+    global _stream, _selected_device, _noise_floor, _smoothed_volume, _monitor_error
     stop_monitor()
     _selected_device = device_id
     _noise_floor = 0.0
     _smoothed_volume = 0.0
-    if not _sounddevice_available():
+    _monitor_error = None
+    if sounddevice is None or numpy is None:
+        _monitor_error = "unavailable"
         _update_volume(0.0)
         return
-    sounddevice = importlib.import_module("sounddevice")
 
     def callback(indata, frames, time, status):
         if status:
             return
-        if not _numpy_available():
-            return
-        numpy = importlib.import_module("numpy")
         rms = numpy.sqrt(numpy.mean(numpy.square(indata)))
         rms_value = float(rms)
         if rms_value <= 1e-7:
@@ -262,6 +279,8 @@ def start_monitor(device_id: Optional[int] = None) -> None:
         )
         _stream.start()
     except Exception:
+        _LOGGER.exception("Failed to open input device %s", actual_device)
+        _stream = None
         if actual_device is not None:
             try:
                 _stream = sounddevice.InputStream(
@@ -270,16 +289,30 @@ def start_monitor(device_id: Optional[int] = None) -> None:
                     callback=callback,
                 )
                 _stream.start()
+                _monitor_error = "fallback"
             except Exception:
-                _update_volume(0.0)
+                _LOGGER.exception("Failed to open default input device")
+                _stream = None
+        if _stream is None:
+            _monitor_error = "failed"
+            _update_volume(0.0)
 
 
 def stop_monitor() -> None:
     global _stream
     if _stream is not None:
-        _stream.stop()
-        _stream.close()
+        try:
+            _stream.stop()
+            _stream.close()
+        except Exception:
+            _LOGGER.exception("Failed to close input stream")
         _stream = None
+
+
+def get_monitor_error() -> Optional[str]:
+    """None when the selected device works, "fallback" when the default device is used
+    instead, "failed"/"unavailable" when there is no input at all."""
+    return _monitor_error
 
 
 def get_selected_device() -> Optional[int]:

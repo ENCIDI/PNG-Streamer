@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PNG Streamer
+Comment=PNGTuber avatar for OBS
+Exec=PNGStreamer
+Icon=pngstreamer
+Terminal=false
+Categories=AudioVideo;Utility;
+StartupWMClass=PNGStreamer

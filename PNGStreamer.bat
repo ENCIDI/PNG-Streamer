@@ -8,7 +8,7 @@ set "HASH_FILE=%VENV%\requirements.sha256"
 if /i "%~1"=="--run" goto run
 
 set "SHOW_CONSOLE=1"
-for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "try { $p = '%ROOT%app\storage\settings.json'; if (Test-Path $p) { $s = (Get-Content $p -Raw | ConvertFrom-Json); if ($s.settings.'show-console') { '1' } else { '0' } } else { '1' } } catch { '1' }"`) do set "SHOW_CONSOLE=%%A"
+for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "try { $p = '%ROOT%data\settings.json'; if (Test-Path $p) { $s = (Get-Content $p -Raw | ConvertFrom-Json); if ($s.settings.'show-console') { '1' } else { '0' } } else { '1' } } catch { '1' }"`) do set "SHOW_CONSOLE=%%A"
 
 if "%SHOW_CONSOLE%"=="1" (
   "%~f0" --run
@@ -19,12 +19,6 @@ exit /b
 
 :run
 pushd "%ROOT%"
-if not exist "%ROOT%images" (
-  mkdir "%ROOT%images" >nul 2>nul
-)
-if not exist "%ROOT%app\storage" (
-  mkdir "%ROOT%app\storage" >nul 2>nul
-)
 call :ensure_python
 if errorlevel 1 (
   pause

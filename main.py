@@ -1,6 +1,7 @@
-from app.modules import logging_manager as logm, flet_ui_manager as wm
+import sys
+
+from app.ui import app
 
 
-logm.init_logging()
-logm.get_logger(__name__).info("Application start")
-wm.start_program()
+if __name__ == "__main__":
+    sys.exit(app.run())

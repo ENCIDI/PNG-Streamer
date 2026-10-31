@@ -1,9 +1,9 @@
 # 🎙️ PNG Streamer 🚀
 
 ![Python Version](https://img.shields.io/badge/Python-3.13%2B-blue?logo=python&logoColor=white)
-![Framework](https://img.shields.io/badge/UI-Flet-9146FF?logo=python&logoColor=white)
+![Framework](https://img.shields.io/badge/UI-Qt%20(PySide6)-41CD52?logo=qt&logoColor=white)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)
-![Server](https://img.shields.io/badge/Server-Uvicorn-purple?logo=uvicorn&logoColor=white)
+![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux-informational)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 **EN [English](#english)&nbsp;&nbsp;|&nbsp;&nbsp;RU [Русский](#русский)**
@@ -12,113 +12,125 @@
 
 ## English
 
-**PNG Streamer** is a modern, flexible desktop app for streamers and content creators. It switches your PNG avatar's (VTuber overlay) frames in real time based on your microphone volume, blinks its eyes, and generates an interactive web widget for smooth integration into OBS Studio as a Browser Source.
+**PNG Streamer** is a desktop app for streamers and content creators. It switches your PNG avatar's (PNGTuber / VTuber overlay) frames in real time based on your microphone volume, makes it blink and shake, and serves a transparent web widget you add to OBS Studio as a Browser Source.
 
 > [!NOTE]
-> The interface is available in Russian and English — the language is auto-detected from your system, but can be switched manually via the flag button in the app.
+> The interface is available in Russian and English — the language is detected from your system and can be changed in **Settings**.
 
 ---
 
 ### 🌟 Key Features
 
-Beyond basic image switching, PNG Streamer packs a number of advanced fine-tuning features:
-
-*   🖥️ **Modern Flet-based UI:** dark purple theme with soft background geometry, a resizable, frameless window, and sidebar navigation with three sections — **Launch**, **Sound Settings**, **Image Settings**. Profile editing happens inline on the page, with no pop-up windows.
-*   🌍 **Localization (RU / EN):** the interface language is auto-detected from your system language (Russian for Russia and CIS countries, English otherwise), and can be switched manually with the flag button at the bottom of the sidebar — no restart required.
-*   🎤 **Microphone volume monitoring:** high-precision real-time RMS volume capture, with the indicator updating at 30 FPS.
-*   🎧 **Independent sound profiles:** microphone, audio protocol (Host API), and noise suppression settings are saved as separate, switchable profiles — just like image profiles, but fully independent from them.
-*   🤫 **Two noise suppression algorithms to choose from:** adaptive (continuously tracks the background noise level and adjusts the cutoff threshold) and fixed threshold (a simple, manually configured static gate).
-*   🎚️ **Dynamic range compressor:** configurable threshold and ratio — smooths out sharp volume spikes (screaming, laughing) without affecting quiet sounds.
-*   📈 **Volume smoothing:** a dedicated smoothing filter — fast attack and slow release — avoids unpleasant frame flickering.
-*   🎭 **Multiple image profiles:** unlimited number of profiles, up to 10 volume ranges with individual frames, including an image preview right in the editor.
-*   🫨 **Dynamic shake effect (Shake Level):** a vibration level can be set for each volume threshold — the OBS widget smoothly shifts the avatar along the X and Y axes using a sinusoidal noise model.
-*   👁️ **Random blinking (Blink Engine):** configurable blink frequency and duration, with automatic selection of the closed-eye frame matching the current volume level.
-*   🌐 **High-performance FastAPI OBS widget:** a transparent HTML5 widget; if no frame is available, it serves a transparent 1×1 pixel, preventing a black screen or broken images in OBS.
-*   📥 **System tray support:** closing the window minimizes the app to the tray instead of exiting — the server and monitoring keep running in the background.
-*   ⚡ **Smart automatic launch:** `.bat` (Windows) or `.sh` (macOS/Linux) will check and install Python 3.13, create a virtual environment, install dependencies (caching them via SHA256 hashes), and launch the app in visible or fully hidden console mode — when the console is shown, the app's full log is mirrored into it.
+*   🖥️ **Native Qt interface:** dark graphite theme with a lime accent, works the same on Windows and Linux (X11 and Wayland). Four sections — **Launch**, **Sound**, **Images**, **Settings**.
+*   👀 **Live preview:** see exactly what OBS will show, including blinking and shaking. The volume meter shows every frame's thumbnail on its threshold and highlights the frame that is currently active.
+*   🎤 **Microphone monitoring:** real-time RMS volume capture, updated at 30 FPS.
+*   🎧 **Sound profiles:** audio system, device, noise suppression and compressor are saved as switchable profiles. Changes to the active profile are applied live while you edit, so you can tune them by ear.
+*   🤫 **Two noise suppression algorithms:** adaptive (follows the background noise) and fixed threshold.
+*   🎚️ **Dynamic range compressor:** tames screaming and laughing so loud peaks do not skip the middle frames.
+*   🎭 **Image profiles:** any number of profiles and frames, image picker with thumbnails, drag-and-drop import of new images, explicit save with unsaved-changes tracking.
+*   🫨 **Shake level** per frame and 👁️ **random blinking** with a closed-eyes image per frame.
+*   🌐 **FastAPI OBS widget:** transparent HTML5 page; if there is no frame it serves a transparent pixel instead of a broken image.
+*   📥 **System tray:** status at a glance (live / stopped / microphone error), start and stop the server, copy the OBS address and switch profiles without opening the window.
+*   🔄 **Automatic updates** from GitHub Releases that never touch your profiles and images.
+*   ⚙️ **Start with the system**, optionally minimized to tray and with the OBS server already running.
 
 ---
 
-### 📦 Quick Start
+### 📦 Installation
 
-#### 💻 Method 1: Automatic (Recommended for Windows)
-Just download the project and double-click:
-```powershell
-PNGStreamer.bat
+Download the latest version from the [Releases](https://github.com/ENCIDI/PNG-Streamer/releases) page.
+
+#### 💻 Windows
+Run `PNGStreamer-Setup-X.Y.Z.exe`. The installer does not need administrator rights: it lets you choose a folder (by default `%LOCALAPPDATA%\Programs\PNGStreamer`) and whether to create Start menu and desktop shortcuts.
+
+> [!NOTE]
+> The installer is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher on the first run: click **More info → Run anyway**.
+
+#### 🐧 Linux
+Download `PNGStreamer-X.Y.Z-x86_64.AppImage`, make it executable and run it:
+```bash
+chmod +x PNGStreamer-*-x86_64.AppImage
+./PNGStreamer-*-x86_64.AppImage
 ```
-*The script will automatically prepare the environment, install dependencies, and launch the app.*
+On the first start the app offers to move itself into a permanent folder (by default `~/Applications/PNGStreamer`) and to add itself to the applications menu and the desktop. You can also choose **Run from here**.
 
-#### 🛠️ Method 2: Manual, via console
-1. Create and activate a virtual environment:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   ```
-2. Install dependencies:
-   ```powershell
-   pip install -r app/requirements.txt
-   ```
-3. Launch the app:
-   ```powershell
-   python main.py
-   ```
+> [!TIP]
+> *   On **GNOME** the tray icon needs the [AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/) extension (preinstalled on Ubuntu). Without a tray, closing the window quits the app.
+> *   If the AppImage does not start because FUSE is missing, install `libfuse2` / `fuse` or run it with `--appimage-extract-and-run`.
+
+#### 🛠️ From source (development)
+Requires Python 3.13+.
+```bash
+python -m venv .venv
+# Windows: .\.venv\Scripts\activate    Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+python main.py
+```
+On Windows `PNGStreamer.bat` does all of this automatically (including installing Python 3.13 via winget). On Linux, install `libportaudio2` from your distribution first.
 
 ---
 
 ### 🎬 Setting Up OBS Studio
 
-1. Open the **"Launch"** tab in PNG Streamer, pick a sound profile and an image profile, then click **"Start"**.
-2. Copy the widget link from the "Widget address" field (default `http://127.0.0.1:8642/widget`).
-3. In OBS Studio, add a new **"Browser"** source (Browser Source).
-4. Paste the copied link into the URL field.
-5. Set the desired width and height (e.g. `800` by `800` or `1920` by `1080`, depending on your avatar's size).
-6. Check **"Control audio via OBS"** if needed, then click **"OK"**.
+1. Open **Launch**, pick a sound profile and an image profile, then click **Start**.
+2. Click **Copy** next to the address (default `http://127.0.0.1:8642/widget`).
+3. In OBS Studio add a **Browser** source and paste the address into the URL field.
+4. Set the size, e.g. `600` × `600`. The background is transparent.
 
 ---
 
-### 📁 Folder & Storage Structure
+### 🔄 Updates and your data
+
+*   Profiles, images and logs live in the `data` folder **next to the program**. Updates and reinstalls never touch it; the uninstaller asks before deleting it.
+*   The app checks [Releases](https://github.com/ENCIDI/PNG-Streamer/releases) once a day (can be turned off in **Settings**) and shows a banner when a new version is out. The download is verified with SHA-256, a backup of your settings is saved to `data/backups/`, and the app restarts into the new version.
+*   Updates are only offered to the installed app whose version exactly matches a published release. Running from source or a build of an unreleased version never updates itself.
+
+---
+
+### 📁 Folder Structure
 
 ```text
-PNGSteramer/
-├── PNGStreamer.bat               # Quick start for Windows
-├── PNGStreamer.sh                # Quick start for Linux/macOS
-├── main.py                       # Program entry point
-├── images/                       # Avatar images go here (*.png)
-│   ├── image0.png (Eyes closed / Silent)
-│   ├── image1.png (Eyes closed / Speaking)
-│   ├── image2.png (Eyes open / Silent)
-│   └── image3.png (Eyes open / Speaking)
-└── app/
-    ├── storage/                  # Configuration storage
-    │   ├── settings.json         # General app settings
-    │   ├── profiles.json         # Image profiles (volume thresholds, blink, shake)
-    │   └── sound_profiles.json   # Sound profiles (microphone, protocol, noise suppression, compressor)
-    └── modules/                  # The app's core logic
-        └── ui/                   # Flet UI (tabs, tray, shared components)
+PNGStreamer/
+├── PNGStreamer.exe / .AppImage    # The program (main.py when run from source)
+└── data/                          # Your data, kept across updates
+    ├── settings.json              # General settings
+    ├── profiles.json              # Image profiles (frames, thresholds, blink, shake)
+    ├── sound_profiles.json        # Sound profiles (device, noise suppression, compressor)
+    ├── images/                    # Avatar images (*.png, *.jpg, *.gif, *.webp)
+    ├── logs/                      # app.log
+    └── backups/                   # Settings backups made before updates
 ```
+
+Repository layout: `app/ui` — Qt interface, `app/modules` — audio, storage, web server, updates and autostart, `app/defaults` — the sample profile copied into `data` on first start, `packaging` — PyInstaller, Inno Setup and AppImage build files, `tests` — pytest suite.
 
 ---
 
 ### ⚙️ Configuration File Schema
 
-Advanced users can manually edit the settings files in the `app/storage/` folder.
+Everything is editable in the app, but the files in `data/` are plain JSON. Missing fields are filled with defaults automatically.
 
 #### 1. System settings (`settings.json`)
 ```json
 {
+  "schema-version": 1,
   "settings": {
     "active-image-profile-id": 1,
     "active-sound-profile-id": 1,
     "server-port": 8642,
-    "show-console": false,
-    "language": "ru"
+    "language": "en",
+    "minimize-to-tray-on-close": true,
+    "start-minimized": false,
+    "start-server-on-launch": false,
+    "check-updates": true
   }
 }
 ```
-- `active-image-profile-id` / `active-sound-profile-id` — ID of the currently active image / sound profile.
-- `server-port` — the FastAPI widget server's port.
-- `show-console` — whether to show the console window on startup (controlled by `PNGStreamer.bat`/`.sh`).
-- `language` — interface language, `"ru"` or `"en"`. Auto-detected and saved here on first launch; changed afterwards via the flag button in the app.
+- `schema-version` — data format version, used to migrate files after updates.
+- `active-image-profile-id` / `active-sound-profile-id` — the active profiles.
+- `server-port` — port of the OBS widget server.
+- `language` — `"ru"` or `"en"`.
+- `minimize-to-tray-on-close`, `start-minimized`, `start-server-on-launch`, `check-updates` — the switches from **Settings**.
+- The app also stores window geometry and update-check bookkeeping here.
 
 #### 2. Sound profiles (`sound_profiles.json`)
 ```json
@@ -141,13 +153,10 @@ Advanced users can manually edit the settings files in the `app/storage/` folder
   ]
 }
 ```
-- `host-api` — the audio protocol's (Host API) index in `sounddevice`, `null` — auto.
-- `microphone` / `microphone-name` — microphone device ID and its display name (fallback if the ID disappears, e.g. when a USB microphone is unplugged).
-- `unnoised` — whether noise suppression is enabled.
-- `noise-algorithm` — `"adaptive"` (adaptive, based on background noise) or `"fixed"` (fixed threshold).
-- `noise-threshold` — the threshold for the `"fixed"` algorithm (0–100).
-- `compressor-enabled` / `compressor-threshold` / `compressor-ratio` — enabling and parameters of the dynamic range compressor.
-- `effects` — reserved for future audio effects.
+- `host-api` — audio system index in PortAudio, `null` — automatic.
+- `microphone` / `microphone-name` — device ID and name (the name is used when the ID changes, e.g. after replugging a USB microphone).
+- `unnoised`, `noise-algorithm` (`"adaptive"` / `"fixed"`), `noise-threshold` (0–100) — noise suppression.
+- `compressor-enabled`, `compressor-threshold` (0–100), `compressor-ratio` (1–20) — compressor.
 
 #### 3. Image profiles (`profiles.json`)
 ```json
@@ -161,11 +170,7 @@ Advanced users can manually edit the settings files in the `app/storage/` folder
         { "id": 1, "path-to-image": "image2.png", "volume-level": 30, "shake-level": 1 },
         { "id": 2, "path-to-image": "image2.png", "volume-level": 80, "shake-level": 99 }
       ],
-      "blink": {
-        "interval-min-ms": 2000,
-        "interval-max-ms": 5000,
-        "duration-ms": 100
-      },
+      "blink": { "interval-min-ms": 2000, "interval-max-ms": 5000, "duration-ms": 100 },
       "blink-images": [
         { "id": 0, "path-to-image": "image0.png" },
         { "id": 1, "path-to-image": "image1.png" }
@@ -174,127 +179,151 @@ Advanced users can manually edit the settings files in the `app/storage/` folder
   ]
 }
 ```
-- `images[].path-to-image` — the image, activated when volume is `>= volume-level` (in percent).
-- `images[].shake-level` — the vibration level in the OBS widget (0 — no shake).
-- `blink` — the minimum/maximum interval between blinks and the duration of closed eyes, in milliseconds.
-- `blink-images` — the closed-eyes frame for each `id` from `images`.
+- `images[].path-to-image` — file name in `data/images` (or an absolute path), shown when volume `>= volume-level`.
+- `images[].shake-level` — shake amplitude in the OBS widget (0 — none).
+- `blink` — interval between blinks and blink duration, in milliseconds.
+- `blink-images` — the closed-eyes image for the frame with the same `id`.
+
+---
+
+### 🧑‍💻 Development
+
+```bash
+python -m pytest            # tests (Qt runs offscreen)
+pip install pyinstaller
+pyinstaller --noconfirm packaging/pngstreamer.spec   # dist/PNGStreamer
+dist/PNGStreamer/PNGStreamer --self-test             # smoke test of the build
+```
+Releases are built by GitHub Actions: bump `app/version.py`, push a tag `vX.Y.Z` with the same version, and the workflow builds the Windows installer and the Linux AppImage, then creates a **draft** release with `SHA256SUMS`. Users get the update only after the draft is published.
 
 ---
 
 ### 📜 License
-This project is distributed under the **MIT License**. You are free to modify and use it for any personal or commercial purpose (including streams and videos).
+PNG Streamer is distributed under the **MIT License** — free for personal and commercial use, including streams and videos. Builds include Qt (PySide6) under the LGPLv3 and the Inter font under the SIL OFL 1.1; see [`licenses/`](licenses/THIRD_PARTY_NOTICES.md).
 
 ---
 
 ## Русский
 
-**PNG Streamer** — это современное и гибкое настольное приложение для стримеров и контент-мейкеров. Оно позволяет в реальном времени переключать кадры вашего PNG-аватара (VTuber-оверлея) в зависимости от громкости голоса с микрофона, моргать глазами и генерировать интерактивный веб-виджет для плавной интеграции в OBS Studio в качестве Browser Source.
+**PNG Streamer** — настольное приложение для стримеров и контент-мейкеров. Оно в реальном времени переключает кадры вашего PNG-аватара (PNGTuber / VTuber-оверлея) в зависимости от громкости микрофона, заставляет его моргать и трястись и отдаёт прозрачный веб-виджет, который добавляется в OBS Studio как источник «Браузер».
 
 > [!NOTE]
-> Интерфейс доступен на русском и английском языках — язык определяется автоматически по системе, но его можно переключить вручную кнопкой-флагом в приложении.
+> Интерфейс доступен на русском и английском — язык определяется по системе и меняется в **Настройках**.
 
 ---
 
-### 🌟 Ключевые возможности (Features)
+### 🌟 Ключевые возможности
 
-Помимо базового переключения картинок, PNG Streamer содержит множество продвинутых функций для тонкой настройки:
-
-*   🖥️ **Современный интерфейс на Flet:** тёмная фиолетовая тема с мягкой фоновой геометрией, resizable-окно без системной рамки и боковая навигация с тремя разделами — **Запуск**, **Настройки звука**, **Настройки изображений**. Редактирование профилей происходит прямо на странице, без всплывающих окон.
-*   🌍 **Локализация (RU / EN):** язык интерфейса определяется автоматически по системному языку (русский — для России и стран СНГ, иначе английский), а переключить его вручную можно кнопкой с флагом внизу боковой панели — без перезапуска приложения.
-*   🎤 **Мониторинг громкости микрофона:** высокоточный захват и расчёт RMS громкости в реальном времени, индикатор обновляется с частотой 30 FPS.
-*   🎧 **Независимые профили звука:** микрофон, аудио-протокол (Host API) и настройки шумоподавления сохраняются как отдельные переключаемые профили — точно так же, как профили изображений, но полностью независимо от них.
-*   🤫 **Два алгоритма шумоподавления на выбор:** адаптивный (сам отслеживает фоновый уровень шума и подстраивает порог отсечки) и фиксированный порог (простой статический гейт с ручной настройкой).
-*   🎚️ **Компрессор динамического диапазона:** настраиваемые порог сжатия и соотношение — сглаживает резкие скачки громкости (крик, смех) без потери тихих звуков.
-*   📈 **Сглаживание движений (Volume Smoothing):** применяется специальный фильтр сглаживания звука — быстрая атака и медленный релиз, избегая неприятного мерцания кадров.
-*   🎭 **Множество профилей изображений:** неограниченное число профилей, до 10 диапазонов громкости с индивидуальными кадрами, включая превью картинки прямо в редакторе.
-*   🫨 **Эффект динамической тряски (Shake Level):** для каждого порога громкости можно задать уровень вибрации — OBS-виджет плавно смещает аватар по осям X и Y через синусоидальную модель шума.
-*   👁️ **Случайное моргание (Blink Engine):** настраиваемая частота и длительность моргания, с автоматическим подбором закрытого кадра для текущего уровня громкости.
-*   🌐 **Высокопроизводительный FastAPI OBS-виджет:** прозрачный HTML5-виджет; при отсутствии кадра отдаёт прозрачный пиксель 1×1, предотвращая чёрный экран или битые изображения в OBS.
-*   📥 **Работа в трее (System Tray Icon):** закрытие окна сворачивает приложение в трей вместо выхода — сервер и мониторинг продолжают работать в фоне.
-*   ⚡ **Умный автоматический запуск:** `.bat` (Windows) или `.sh` (macOS/Linux) сами проверят и установят Python 3.13, создадут виртуальное окружение, установят зависимости (кэшируя их через хэш-суммы SHA256) и запустят программу в видимом или полностью скрытом консольном режиме — при включённой консоли в неё дублируется весь лог приложения.
+*   🖥️ **Нативный интерфейс на Qt:** тёмная графитовая тема с лаймовым акцентом, одинаково работает на Windows и Linux (X11 и Wayland). Четыре раздела — **Запуск**, **Звук**, **Изображения**, **Настройки**.
+*   👀 **Живой предпросмотр:** ровно то, что покажет OBS, включая моргание и тряску. На индикаторе громкости миниатюры кадров стоят на своих порогах, текущий кадр подсвечен.
+*   🎤 **Мониторинг микрофона:** расчёт RMS-громкости в реальном времени, обновление 30 раз в секунду.
+*   🎧 **Профили звука:** аудиосистема, устройство, шумоподавление и компрессор сохраняются как переключаемые профили. Изменения активного профиля применяются сразу во время редактирования — настраивать можно на слух.
+*   🤫 **Два алгоритма шумоподавления:** адаптивный (подстраивается под фоновый шум) и фиксированный порог.
+*   🎚️ **Компрессор динамического диапазона:** сглаживает крик и смех, чтобы громкие пики не перескакивали через средние кадры.
+*   🎭 **Профили изображений:** любое число профилей и кадров, выбор картинок по миниатюрам, импорт перетаскиванием, явное сохранение с отслеживанием несохранённых изменений.
+*   🫨 **Тряска** для каждого кадра и 👁️ **случайное моргание** со своей картинкой закрытых глаз для каждого кадра.
+*   🌐 **OBS-виджет на FastAPI:** прозрачная HTML5-страница; если кадра нет, отдаётся прозрачный пиксель вместо битой картинки.
+*   📥 **Системный трей:** статус по значку (в эфире / остановлен / ошибка микрофона), запуск и остановка сервера, копирование адреса для OBS и смена профилей без открытия окна.
+*   🔄 **Автообновление** из GitHub Releases, которое никогда не трогает ваши профили и картинки.
+*   ⚙️ **Запуск вместе с системой** — при желании свёрнутым в трей и сразу с запущенным сервером для OBS.
 
 ---
 
-### 📦 Быстрый старт (Quick Start)
+### 📦 Установка
 
-#### 💻 Способ 1: Автоматический (Рекомендуемый для Windows)
-Просто скачайте проект и дважды кликните по файлу:
-```powershell
-PNGStreamer.bat
+Скачайте последнюю версию со страницы [Releases](https://github.com/ENCIDI/PNG-Streamer/releases).
+
+#### 💻 Windows
+Запустите `PNGStreamer-Setup-X.Y.Z.exe`. Установщику не нужны права администратора: он предложит выбрать папку (по умолчанию `%LOCALAPPDATA%\Programs\PNGStreamer`) и создать ярлыки в меню «Пуск» и на рабочем столе.
+
+> [!NOTE]
+> Установщик пока не подписан цифровой подписью, поэтому Windows SmartScreen при первом запуске может предупредить о неизвестном издателе: нажмите **Подробнее → Выполнить в любом случае**.
+
+#### 🐧 Linux
+Скачайте `PNGStreamer-X.Y.Z-x86_64.AppImage`, сделайте файл исполняемым и запустите:
+```bash
+chmod +x PNGStreamer-*-x86_64.AppImage
+./PNGStreamer-*-x86_64.AppImage
 ```
-*Скрипт автоматически подготовит окружение, установит зависимости и запустит программу.*
+При первом запуске программа предложит переместить себя в постоянную папку (по умолчанию `~/Applications/PNGStreamer`) и добавить себя в меню приложений и на рабочий стол. Можно выбрать **Запустить отсюда**.
 
-#### 🛠️ Способ 2: Вручную через консоль
-1. Создайте виртуальное окружение и активируйте его:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   ```
-2. Установите зависимости:
-   ```powershell
-   pip install -r app/requirements.txt
-   ```
-3. Запустите приложение:
-   ```powershell
-   python main.py
-   ```
+> [!TIP]
+> *   В **GNOME** для значка в трее нужно расширение [AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/) (в Ubuntu оно стоит по умолчанию). Если трея нет, закрытие окна завершает программу.
+> *   Если AppImage не запускается из-за отсутствия FUSE, установите `libfuse2` / `fuse` или запустите с ключом `--appimage-extract-and-run`.
+
+#### 🛠️ Из исходников (для разработки)
+Нужен Python 3.13+.
+```bash
+python -m venv .venv
+# Windows: .\.venv\Scripts\activate    Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+python main.py
+```
+На Windows всё это автоматически делает `PNGStreamer.bat` (включая установку Python 3.13 через winget). На Linux предварительно установите `libportaudio2` из репозитория дистрибутива.
 
 ---
 
 ### 🎬 Настройка в OBS Studio
 
-1. Откройте вкладку **«Запуск»** в приложении PNG Streamer, выберите профиль звука и профиль изображений, затем нажмите кнопку **«Запустить»**.
-2. Скопируйте ссылку на виджет из поля «Адрес виджета» (по умолчанию `http://127.0.0.1:8642/widget`).
-3. В OBS Studio добавьте новый источник **«Браузер»** (Browser Source).
-4. Вставьте скопированную ссылку в поле URL.
-5. Установите нужную ширину и высоту (например, `800` на `800` или `1920` на `1080` в зависимости от размера аватара).
-6. Поставьте галочку **«Контролировать аудио с помощью OBS»** (при необходимости) и нажмите **«ОК»**.
+1. Откройте **Запуск**, выберите профиль звука и профиль изображений и нажмите **Запустить**.
+2. Нажмите **Копировать** рядом с адресом (по умолчанию `http://127.0.0.1:8642/widget`).
+3. В OBS Studio добавьте источник **«Браузер»** и вставьте адрес в поле URL.
+4. Задайте размер, например `600` × `600`. Фон прозрачный.
 
 ---
 
-### 📁 Структура папок и хранения данных
+### 🔄 Обновления и ваши данные
+
+*   Профили, картинки и логи хранятся в папке `data` **рядом с программой**. Обновления и переустановка её не трогают, а деинсталлятор спрашивает, прежде чем её удалить.
+*   Раз в сутки программа проверяет [Releases](https://github.com/ENCIDI/PNG-Streamer/releases) (отключается в **Настройках**) и показывает плашку, когда вышла новая версия. Скачанный файл проверяется по SHA-256, копия настроек сохраняется в `data/backups/`, и программа перезапускается уже в новой версии.
+*   Обновление предлагается только установленной программе, чья версия точно совпадает с опубликованным релизом. Запуск из исходников или сборка неопубликованной версии никогда не обновляются сами.
+
+---
+
+### 📁 Структура папок
 
 ```text
-PNGSteramer/
-├── PNGStreamer.bat               # Быстрый старт Windows
-├── PNGStreamer.sh                # Быстрый старт Linux/macOS
-├── main.py                       # Точка входа в программу
-├── images/                       # Сюда загружаются изображения аватара (*.png)
-│   ├── image0.png (Глаза закрыты / Молчание)
-│   ├── image1.png (Глаза закрыты / Говорение)
-│   ├── image2.png (Глаза открыты / Молчание)
-│   └── image3.png (Глаза открыты / Говорение)
-└── app/
-    ├── storage/                  # Хранилище конфигураций
-    │   ├── settings.json         # Общие настройки приложения
-    │   ├── profiles.json         # Профили изображений (пороги громкости, моргание, тряска)
-    │   └── sound_profiles.json   # Профили звука (микрофон, протокол, шумоподавление, компрессор)
-    └── modules/                  # Логическое ядро приложения
-        └── ui/                   # Flet-интерфейс (вкладки, трей, общие компоненты)
+PNGStreamer/
+├── PNGStreamer.exe / .AppImage    # Программа (main.py при запуске из исходников)
+└── data/                          # Ваши данные, сохраняются при обновлениях
+    ├── settings.json              # Общие настройки
+    ├── profiles.json              # Профили изображений (кадры, пороги, моргание, тряска)
+    ├── sound_profiles.json        # Профили звука (устройство, шумоподавление, компрессор)
+    ├── images/                    # Картинки аватара (*.png, *.jpg, *.gif, *.webp)
+    ├── logs/                      # app.log
+    └── backups/                   # Копии настроек перед обновлениями
 ```
+
+Устройство репозитория: `app/ui` — интерфейс на Qt, `app/modules` — звук, хранилище, веб-сервер, обновления и автозапуск, `app/defaults` — пример профиля, который копируется в `data` при первом запуске, `packaging` — файлы сборки PyInstaller, Inno Setup и AppImage, `tests` — тесты pytest.
 
 ---
 
 ### ⚙️ Схема файлов конфигурации
 
-Для опытных пользователей доступно ручное редактирование файлов настроек в папке `app/storage/`.
+Всё настраивается в программе, но файлы в `data/` — обычный JSON. Недостающие поля заполняются значениями по умолчанию автоматически.
 
 #### 1. Системные настройки (`settings.json`)
 ```json
 {
+  "schema-version": 1,
   "settings": {
     "active-image-profile-id": 1,
     "active-sound-profile-id": 1,
     "server-port": 8642,
-    "show-console": false,
-    "language": "ru"
+    "language": "ru",
+    "minimize-to-tray-on-close": true,
+    "start-minimized": false,
+    "start-server-on-launch": false,
+    "check-updates": true
   }
 }
 ```
-- `active-image-profile-id` / `active-sound-profile-id` — ID текущего активного профиля изображений / звука.
-- `server-port` — порт FastAPI-сервера для виджета.
-- `show-console` — показывать ли окно консоли при старте (управляется `PNGStreamer.bat`/`.sh`).
-- `language` — язык интерфейса, `"ru"` или `"en"`. При первом запуске определяется автоматически и сохраняется сюда; дальше меняется кнопкой-флагом в приложении.
+- `schema-version` — версия формата данных, по ней файлы мигрируют после обновлений.
+- `active-image-profile-id` / `active-sound-profile-id` — активные профили.
+- `server-port` — порт сервера OBS-виджета.
+- `language` — `"ru"` или `"en"`.
+- `minimize-to-tray-on-close`, `start-minimized`, `start-server-on-launch`, `check-updates` — переключатели из **Настроек**.
+- Также программа хранит здесь размер окна и служебные данные проверки обновлений.
 
 #### 2. Профили звука (`sound_profiles.json`)
 ```json
@@ -317,13 +346,10 @@ PNGSteramer/
   ]
 }
 ```
-- `host-api` — индекс аудио-протокола (Host API) в `sounddevice`, `null` — авто.
-- `microphone` / `microphone-name` — ID устройства микрофона и его отображаемое имя (запасной вариант, если ID пропал, например при отключении USB-микрофона).
-- `unnoised` — включено ли шумоподавление.
-- `noise-algorithm` — `"adaptive"` (адаптивный по фоновому шуму) или `"fixed"` (фиксированный порог).
-- `noise-threshold` — порог для алгоритма `"fixed"` (0–100).
-- `compressor-enabled` / `compressor-threshold` / `compressor-ratio` — включение и параметры компрессора динамического диапазона.
-- `effects` — зарезервировано под будущие аудиоэффекты.
+- `host-api` — индекс аудиосистемы в PortAudio, `null` — автоматически.
+- `microphone` / `microphone-name` — ID устройства и его имя (имя используется, если ID изменился, например после переподключения USB-микрофона).
+- `unnoised`, `noise-algorithm` (`"adaptive"` / `"fixed"`), `noise-threshold` (0–100) — шумоподавление.
+- `compressor-enabled`, `compressor-threshold` (0–100), `compressor-ratio` (1–20) — компрессор.
 
 #### 3. Профили изображений (`profiles.json`)
 ```json
@@ -337,11 +363,7 @@ PNGSteramer/
         { "id": 1, "path-to-image": "image2.png", "volume-level": 30, "shake-level": 1 },
         { "id": 2, "path-to-image": "image2.png", "volume-level": 80, "shake-level": 99 }
       ],
-      "blink": {
-        "interval-min-ms": 2000,
-        "interval-max-ms": 5000,
-        "duration-ms": 100
-      },
+      "blink": { "interval-min-ms": 2000, "interval-max-ms": 5000, "duration-ms": 100 },
       "blink-images": [
         { "id": 0, "path-to-image": "image0.png" },
         { "id": 1, "path-to-image": "image1.png" }
@@ -350,12 +372,24 @@ PNGSteramer/
   ]
 }
 ```
-- `images[].path-to-image` — картинка, активируется при громкости `>= volume-level` (в процентах).
-- `images[].shake-level` — уровень вибрации в OBS-виджете (0 — без тряски).
-- `blink` — минимальный/максимальный интервал между морганиями и длительность закрытых глаз, в миллисекундах.
-- `blink-images` — кадр закрытых глаз для каждого `id` из `images`.
+- `images[].path-to-image` — имя файла в `data/images` (или абсолютный путь); кадр показывается при громкости `>= volume-level`.
+- `images[].shake-level` — амплитуда тряски в OBS-виджете (0 — без тряски).
+- `blink` — интервал между морганиями и длительность моргания, в миллисекундах.
+- `blink-images` — картинка закрытых глаз для кадра с тем же `id`.
+
+---
+
+### 🧑‍💻 Разработка
+
+```bash
+python -m pytest            # тесты (Qt работает без окна)
+pip install pyinstaller
+pyinstaller --noconfirm packaging/pngstreamer.spec   # dist/PNGStreamer
+dist/PNGStreamer/PNGStreamer --self-test             # быстрая проверка сборки
+```
+Релизы собирает GitHub Actions: поднимите версию в `app/version.py`, отправьте тег `vX.Y.Z` с той же версией — workflow соберёт установщик для Windows и AppImage для Linux и создаст **черновик** релиза с `SHA256SUMS`. Пользователи получат обновление только после публикации черновика.
 
 ---
 
 ### 📜 Лицензия
-Этот проект распространяется под лицензией **MIT License**. Вы можете свободно модифицировать и использовать его в любых личных или коммерческих целях (включая трансляции и видеоролики).
+PNG Streamer распространяется по лицензии **MIT** — свободно для личного и коммерческого использования, включая трансляции и видео. Сборки содержат Qt (PySide6) по лицензии LGPLv3 и шрифт Inter по лицензии SIL OFL 1.1; подробности в [`licenses/`](licenses/THIRD_PARTY_NOTICES.md).

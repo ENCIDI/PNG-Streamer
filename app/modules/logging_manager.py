@@ -1,11 +1,9 @@
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
+from app import paths
 
-_LOG_DIR = Path(__file__).resolve().parent.parent / "storage" / "logs"
-_LOG_PATH = _LOG_DIR / "app.log"
 _CONFIGURED = False
 
 
@@ -13,13 +11,13 @@ def init_logging(level: int = logging.INFO) -> None:
     global _CONFIGURED
     if _CONFIGURED:
         return
-    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    paths.LOGS_DIR.mkdir(parents=True, exist_ok=True)
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s")
     file_handler = RotatingFileHandler(
-        _LOG_PATH,
+        paths.LOGS_DIR / "app.log",
         maxBytes=1_000_000,
         backupCount=3,
         encoding="utf-8",

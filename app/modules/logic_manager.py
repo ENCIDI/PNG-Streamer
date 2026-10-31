@@ -1,27 +1,52 @@
 from pathlib import Path
 import random
+import shutil
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from app import paths
 from app.modules import audio_manager as am, storage_manager as sm
 
 
-_IMAGES_DIR = Path(__file__).resolve().parent.parent.parent / "images"
 _BLINK_LOCK = threading.Lock()
 _BLINK_SIGNATURE: Optional[Tuple[Any, int, int, int]] = None
 _BLINK_NEXT_AT = 0.0
 _BLINK_UNTIL = 0.0
 
 
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+
+
 def list_available_images() -> List[str]:
-    if not _IMAGES_DIR.exists():
+    if not paths.IMAGES_DIR.exists():
         return []
     images = []
-    for path in _IMAGES_DIR.iterdir():
-        if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif"}:
+    for path in paths.IMAGES_DIR.iterdir():
+        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
             images.append(path.name)
-    return sorted(images)
+    return sorted(images, key=str.lower)
+
+
+def import_images(files: List[Path]) -> List[str]:
+    """Copy image files into the images folder, renaming on name clashes."""
+    paths.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    imported = []
+    for source in files:
+        source = Path(source)
+        if not source.is_file() or source.suffix.lower() not in IMAGE_SUFFIXES:
+            continue
+        if source.resolve().parent == paths.IMAGES_DIR.resolve():
+            imported.append(source.name)
+            continue
+        target = paths.IMAGES_DIR / source.name
+        counter = 2
+        while target.exists():
+            target = paths.IMAGES_DIR / f"{source.stem}-{counter}{source.suffix}"
+            counter += 1
+        shutil.copy2(source, target)
+        imported.append(target.name)
+    return imported
 
 
 def get_active_image_profile() -> Optional[Dict[str, Any]]:
@@ -67,8 +92,8 @@ def resolve_image_path(image_value: str) -> Optional[Path]:
     candidate = Path(image_value)
     if candidate.is_absolute():
         return candidate if candidate.exists() else None
-    if _IMAGES_DIR.exists():
-        joined = _IMAGES_DIR / image_value
+    if paths.IMAGES_DIR.exists():
+        joined = paths.IMAGES_DIR / image_value
         if joined.exists():
             return joined
     return None
@@ -117,6 +142,22 @@ def _pick_image_entry(profile: Dict[str, Any], volume: float) -> Optional[Dict[s
     if selected is None:
         selected = images_sorted[0]
     return selected
+
+
+def sorted_frames(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return sorted(_normalize_images(profile.get("images", [])), key=lambda item: item.get("volume-level", 0))
+
+
+def pick_frame(profile: Dict[str, Any], volume: float) -> Optional[Dict[str, Any]]:
+    return _pick_image_entry(profile, volume)
+
+
+def blink_settings(profile: Dict[str, Any]) -> Tuple[int, int, int]:
+    return _blink_settings(profile)
+
+
+def blink_image_path(profile: Dict[str, Any], image_id: Optional[int]) -> Optional[Path]:
+    return _pick_blink_image(profile, image_id)
 
 
 def pick_image_for_volume(profile: Dict[str, Any], volume: float) -> Optional[Path]:

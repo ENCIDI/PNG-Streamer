@@ -1,4 +1,5 @@
 import threading
+import time
 from typing import Optional, Tuple
 
 from fastapi import FastAPI
@@ -189,20 +190,31 @@ def _widget_html() -> str:
 </html>"""
 
 
+_START_TIMEOUT_SECONDS = 5.0
+_STOP_TIMEOUT_SECONDS = 3.0
+
+
 def start_server(host: str, port: int) -> Tuple[bool, str]:
     global _server_thread, _server, _current_port
     with _server_lock:
         if _server_thread and _server_thread.is_alive():
             return False, "already_running"
-        config = uvicorn.Config(_APP, host=host, port=port, log_level="info")
-        _server = uvicorn.Server(config=config)
-        _current_port = port
+        # log_config=None keeps uvicorn on our logging setup: its default
+        # config writes to sys.stderr, which is None in windowed builds.
+        config = uvicorn.Config(_APP, host=host, port=port, log_level="info", log_config=None, access_log=False)
+        server = uvicorn.Server(config=config)
+        thread = threading.Thread(target=server.run, daemon=True)
+        thread.start()
 
-        def _run() -> None:
-            _server.run()
+        deadline = time.monotonic() + _START_TIMEOUT_SECONDS
+        while not server.started and thread.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        if not server.started:
+            server.should_exit = True
+            _LOGGER.error("Server failed to start: host=%s port=%s", host, port)
+            return False, "failed"
 
-        _server_thread = threading.Thread(target=_run, daemon=True)
-        _server_thread.start()
+        _server, _server_thread, _current_port = server, thread, port
         _LOGGER.info("Server started: host=%s port=%s", host, port)
         return True, "started"
 
@@ -213,6 +225,8 @@ def stop_server() -> bool:
         if _server is None:
             return False
         _server.should_exit = True
+        if _server_thread is not None:
+            _server_thread.join(_STOP_TIMEOUT_SECONDS)
         _server = None
         _server_thread = None
         _current_port = None

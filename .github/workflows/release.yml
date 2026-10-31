@@ -1,0 +1,123 @@
+name: Build and release
+
+# Pushing a tag vX.Y.Z builds the Windows installer and the Linux AppImage and
+# creates a DRAFT release with them and SHA256SUMS. Publishing the draft is a
+# manual step; the in-app updater ignores drafts until then.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.13"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2 libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  version:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        run: |
+          VERSION=$(python3 -c "import re; print(re.search(r'\"(.+)\"', open('app/version.py').read()).group(1))")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match app/version.py ($VERSION)"
+            exit 1
+          fi
+
+  windows:
+    needs: [test, version]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -r app/requirements.txt pyinstaller
+      - run: pyinstaller --noconfirm packaging/pngstreamer.spec
+      - name: Self-test the build
+        run: |
+          ./dist/PNGStreamer/PNGStreamer.exe --self-test
+          rm -rf dist/PNGStreamer/data
+      - name: Installer
+        run: |
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          if [ ! -f "$ISCC" ]; then choco install innosetup -y --no-progress; fi
+          "$ISCC" "/DAppVersion=${{ needs.version.outputs.version }}" packaging/windows/PNGStreamer.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/PNGStreamer-Setup-*.exe
+          if-no-files-found: error
+
+  linux:
+    needs: [test, version]
+    # The oldest supported Ubuntu keeps the glibc requirement low.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
+            libfontconfig1 libdbus-1-3 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-xinerama0 libxcb-randr0 libxcb-render-util0 libxcb-image0 libwayland-client0 \
+            libwayland-cursor0 libwayland-egl1
+      - run: pip install -r app/requirements.txt pyinstaller
+      - run: pyinstaller --noconfirm packaging/pngstreamer.spec
+      - name: Self-test the build
+        run: |
+          ./dist/PNGStreamer/PNGStreamer --self-test
+          rm -rf dist/PNGStreamer/data
+      - run: bash packaging/linux/build_appimage.sh "${{ needs.version.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/PNGStreamer-*-x86_64.AppImage
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [version, windows, linux]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums
+        working-directory: assets
+        run: sha256sum PNGStreamer-* > SHA256SUMS && cat SHA256SUMS
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" assets/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --draft \
+            --title "PNG Streamer ${{ needs.version.outputs.version }}" \
+            --generate-notes

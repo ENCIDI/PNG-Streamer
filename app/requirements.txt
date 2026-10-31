@@ -1,8 +1,5 @@
 numpy
 sounddevice
-SpeechRecognition
 fastapi
 uvicorn
-flet==0.85.2
-pystray
-pillow
+PySide6-Essentials==6.12.0
