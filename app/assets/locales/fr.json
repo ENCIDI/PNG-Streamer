@@ -358,5 +358,9 @@
  "update.installing": "Installation de la mise à jour, l'application va redémarrer…",
  "update.later": "Plus tard",
  "update.notes": "Nouveautés",
- "update.skip": "Ignorer cette version"
+ "update.skip": "Ignorer cette version",
+ "chat_sample.hello": "salut tout le monde !",
+ "chat_sample.follow": "Suivez la chaîne ❤",
+ "chat_sample.avatar": "l’avatar est trop mignon, tu l’as fait comment ?",
+ "chat_sample.next": "on joue à quoi après ?"
 }

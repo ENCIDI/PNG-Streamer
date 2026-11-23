@@ -358,5 +358,9 @@
  "update.installing": "正在安装更新，程序将会重启…",
  "update.later": "稍后",
  "update.notes": "新功能",
- "update.skip": "跳过此版本"
+ "update.skip": "跳过此版本",
+ "chat_sample.hello": "大家好！",
+ "chat_sample.follow": "记得关注频道 ❤",
+ "chat_sample.avatar": "头像好可爱，你是怎么做的？",
+ "chat_sample.next": "接下来玩什么？"
 }

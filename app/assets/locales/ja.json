@@ -358,5 +358,9 @@
  "update.installing": "アップデートをインストール中です。アプリが再起動します…",
  "update.later": "後で",
  "update.notes": "新機能",
- "update.skip": "このバージョンをスキップ"
+ "update.skip": "このバージョンをスキップ",
+ "chat_sample.hello": "みんなこんにちは！",
+ "chat_sample.follow": "チャンネルをフォローしてね ❤",
+ "chat_sample.avatar": "アバターかわいい！どうやって作ったの？",
+ "chat_sample.next": "次は何をプレイするの？"
 }

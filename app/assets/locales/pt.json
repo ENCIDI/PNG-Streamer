@@ -358,5 +358,9 @@
  "update.installing": "Instalando a atualização, o app vai reiniciar…",
  "update.later": "Depois",
  "update.notes": "Novidades",
- "update.skip": "Pular esta versão"
+ "update.skip": "Pular esta versão",
+ "chat_sample.hello": "oi, pessoal!",
+ "chat_sample.follow": "Siga o canal ❤",
+ "chat_sample.avatar": "o avatar é muito fofo, como você fez?",
+ "chat_sample.next": "o que vamos jogar depois?"
 }

@@ -358,5 +358,9 @@
  "update.installing": "업데이트를 설치하는 중입니다. 앱이 다시 시작됩니다…",
  "update.later": "나중에",
  "update.notes": "새로운 기능",
- "update.skip": "이 버전 건너뛰기"
+ "update.skip": "이 버전 건너뛰기",
+ "chat_sample.hello": "다들 안녕!",
+ "chat_sample.follow": "채널 팔로우 부탁해요 ❤",
+ "chat_sample.avatar": "아바타 너무 귀엽다, 어떻게 만들었어?",
+ "chat_sample.next": "다음엔 뭐 해?"
 }

@@ -358,5 +358,9 @@
  "update.installing": "Встановлюю оновлення, програма перезапуститься…",
  "update.later": "Пізніше",
  "update.notes": "Що нового",
- "update.skip": "Пропустити версію"
+ "update.skip": "Пропустити версію",
+ "chat_sample.hello": "привіт усім!",
+ "chat_sample.follow": "Підписуйтеся на канал ❤",
+ "chat_sample.avatar": "аватар такий милий, як ти його зробив?",
+ "chat_sample.next": "у що гратимемо далі?"
 }

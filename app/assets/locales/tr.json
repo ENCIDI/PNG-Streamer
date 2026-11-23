@@ -358,5 +358,9 @@
  "update.installing": "Güncelleme kuruluyor, uygulama yeniden başlayacak…",
  "update.later": "Sonra",
  "update.notes": "Yenilikler",
- "update.skip": "Bu sürümü atla"
+ "update.skip": "Bu sürümü atla",
+ "chat_sample.hello": "herkese selam!",
+ "chat_sample.follow": "Kanalı takip edin ❤",
+ "chat_sample.avatar": "avatar çok tatlı, nasıl yaptın?",
+ "chat_sample.next": "sırada ne oynuyoruz?"
 }

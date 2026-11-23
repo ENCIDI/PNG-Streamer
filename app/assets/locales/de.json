@@ -358,5 +358,9 @@
  "update.installing": "Update wird installiert, die App startet neu…",
  "update.later": "Später",
  "update.notes": "Was ist neu",
- "update.skip": "Diese Version überspringen"
+ "update.skip": "Diese Version überspringen",
+ "chat_sample.hello": "hallo zusammen!",
+ "chat_sample.follow": "Folgt dem Kanal ❤",
+ "chat_sample.avatar": "der Avatar ist so süß, wie hast du ihn gemacht?",
+ "chat_sample.next": "was spielen wir als Nächstes?"
 }

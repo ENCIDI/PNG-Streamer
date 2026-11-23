@@ -10,17 +10,18 @@ from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequ
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from app.modules import twitch_chat as tc
-from app.ui import theme
+from app.ui import i18n, theme
 
 SOURCE_W, SOURCE_H = 400, 600  # the browser source size the README suggests
 
+# Text parts are translation keys ("t:…"), so the sample speaks the app's language.
 _SAMPLE = [
-    ("Lis_Ryzhiy", "#FF7AC6", [("text", "привет всем! "), ("emote", "25")]),
-    ("nightbot", "#5AC8FA", [("text", "Подписывайтесь на канал ❤")]),
+    ("Lis_Ryzhiy", "#FF7AC6", [("text", "t:chat_sample.hello"), ("text", " "), ("emote", "25")]),
+    ("nightbot", "#5AC8FA", [("text", "t:chat_sample.follow")]),
     ("pixel_owl", "#C8F65A", [("text", "!discord")]),
-    ("MoonCat", "#B58CFF", [("text", "аватар такой милый, как ты его сделал?")]),
+    ("MoonCat", "#B58CFF", [("text", "t:chat_sample.avatar")]),
     ("dark_knight", "#1E1E7A", [("text", "GG "), ("emote", "354"), ("text", " "), ("emote", "354")]),
-    ("streamfan", "#FFB547", [("text", "давай ещё раз реакцию со шляпой")]),
+    ("streamfan", "#FFB547", [("text", "t:chat_sample.next")]),
     ("pepe_fan", "#4CD9A0", [("text", "EZ RainTime Clap PETPET")]),
 ]
 
@@ -31,7 +32,7 @@ def sample_messages() -> List[Dict[str, Any]]:
     for index, (name, color, parts) in enumerate(_SAMPLE):
         fragments = [
             {"type": "emote", "text": "Kappa" if value == "25" else "4Head", "url": tc.EMOTE_URL.format(id=value)}
-            if kind == "emote" else {"type": "text", "text": value}
+            if kind == "emote" else {"type": "text", "text": i18n.t(value[2:]) if value.startswith("t:") else value}
             for kind, value in parts
         ]
         messages.append({

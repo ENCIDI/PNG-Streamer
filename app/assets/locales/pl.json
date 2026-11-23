@@ -358,5 +358,9 @@
  "update.installing": "Instalowanie aktualizacji, program uruchomi się ponownie…",
  "update.later": "Później",
  "update.notes": "Co nowego",
- "update.skip": "Pomiń tę wersję"
+ "update.skip": "Pomiń tę wersję",
+ "chat_sample.hello": "cześć wszystkim!",
+ "chat_sample.follow": "Obserwujcie kanał ❤",
+ "chat_sample.avatar": "awatar jest taki słodki, jak go zrobiłeś?",
+ "chat_sample.next": "w co gramy dalej?"
 }

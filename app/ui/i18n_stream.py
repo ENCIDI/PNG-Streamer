@@ -2,6 +2,10 @@
 chat overlay, the avatar's place in OBS. Merged into i18n._TRANSLATIONS."""
 
 RU = {
+    "chat_sample.hello": "привет всем!",
+    "chat_sample.follow": "Подписывайтесь на канал ❤",
+    "chat_sample.avatar": "аватар такой милый, как ты его сделал?",
+    "chat_sample.next": "что будем играть дальше?",
     "chat_ui.7tv": "Эмоуты 7TV",
     "chat_ui.7tv_count": "Загружено эмоутов: {count} (глобальные и канала).",
     "chat_ui.7tv_hint": "Глобальные и эмоуты канала, загрузятся при подключении к чату.",
@@ -146,6 +150,10 @@ RU = {
 }
 
 EN = {
+    "chat_sample.hello": "hi everyone!",
+    "chat_sample.follow": "Follow the channel ❤",
+    "chat_sample.avatar": "the avatar is so cute, how did you make it?",
+    "chat_sample.next": "what are we playing next?",
     "chat_ui.7tv": "7TV emotes",
     "chat_ui.7tv_count": "{count} emotes loaded (global and channel).",
     "chat_ui.7tv_hint": "Global and channel emotes, loaded when the chat connects.",

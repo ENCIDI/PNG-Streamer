@@ -358,5 +358,9 @@
  "update.installing": "Installazione dell'aggiornamento, l'app verrà riavviata…",
  "update.later": "Più tardi",
  "update.notes": "Novità",
- "update.skip": "Salta questa versione"
+ "update.skip": "Salta questa versione",
+ "chat_sample.hello": "ciao a tutti!",
+ "chat_sample.follow": "Seguite il canale ❤",
+ "chat_sample.avatar": "l’avatar è carinissimo, come l’hai fatto?",
+ "chat_sample.next": "a cosa giochiamo dopo?"
 }
