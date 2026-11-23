@@ -7,7 +7,14 @@ from app.modules import storage_manager as sm
 
 _RUSSIAN_SPEAKING_COUNTRIES = {"RU", "BY", "KZ", "KG", "TJ"}
 
-LANGUAGES = ("ru", "en")
+# Russian and English live here; the others are app/assets/locales/<code>.json
+# (anything missing there falls back to English).
+LANGUAGE_NAMES = {
+    "en": "English", "ru": "Русский", "uk": "Українська", "es": "Español", "pt": "Português (Brasil)",
+    "de": "Deutsch", "fr": "Français", "it": "Italiano", "pl": "Polski", "tr": "Türkçe",
+    "ja": "日本語", "ko": "한국어", "zh": "简体中文",
+}
+LANGUAGES = ("ru", "en")  # extended below with the locale files that exist
 
 _TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "ru": {
@@ -173,6 +180,83 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "setup.install": "Установить",
         "setup.skip": "Запустить отсюда",
         "setup.failed": "Не удалось установить: {error}",
+        "launch.expression": "Выражение",
+        "chip.expressions": "Выражений: {count}",
+        "tray.expression": "Выражение",
+        "images.frames_of": "Кадры · {name}",
+        "settings.run_wizard": "Запустить мастер настройки",
+        "mode.simple": "Обычный",
+        "mode.simple_hint": "Кадры по громкости, моргание и тряска — как раньше.",
+        "expressions.title": "Выражения",
+        "expressions.hint": "Первое выражение — обычное. Остальные включаются горячими клавишами, кнопками на экране «Запуск», из трея или через API.",
+        "expressions.add": "Добавить выражение",
+        "expressions.name": "Название",
+        "expressions.hotkey": "Горячая клавиша",
+        "expressions.hotkey_placeholder": "Нажмите сочетание",
+        "expressions.command": "Горячая клавиша системы",
+        "expressions.copy_command": "Скопировать команду",
+        "expressions.command_copied": "Команда скопирована — назначьте её на сочетание клавиш в настройках системы",
+        "expressions.command_hint": "На Linux назначьте скопированную команду на сочетание клавиш в настройках клавиатуры (KDE, GNOME и др.). Сервер для OBS должен быть запущен.",
+        "expressions.hotkey_hint": "Работает, даже когда окно свёрнуто. Нажмите поле и затем нужное сочетание клавиш.",
+        "expressions.hotkey_busy": "Сочетание {hotkey} уже занято другой программой — выберите другое.",
+        "expressions.return_after": "Вернуться через, с",
+        "expressions.delete": "Удалить выражение",
+        "expressions.delete_title": "Удалить выражение?",
+        "expressions.delete_text": "Выражение «{name}» и его кадры будут удалены из профиля.",
+        "expressions.default_name": "Обычное",
+        "expressions.new_name": "Выражение {index}",
+        "animation.title": "Анимация",
+        "animation.hint": "Аватар подпрыгивает в начале фразы, слегка тянется и сжимается, дышит в тишине и плавно меняет кадры.",
+        "animation.bounce": "Отскок",
+        "animation.squash": "Сплющивание",
+        "animation.breathing": "Дыхание",
+        "animation.transition": "Смена кадров",
+        "calibration.button": "Подобрать пороги по голосу",
+        "calibration.title": "Подбор порогов по голосу",
+        "calibration.intro": "Сначала 3 секунды тишины, затем 6 секунд обычной речи. По записи программа выставит шумодав и пороги кадров.",
+        "calibration.start": "Начать",
+        "calibration.retry": "Ещё раз",
+        "calibration.apply": "Применить",
+        "calibration.silence": "Помолчите…",
+        "calibration.silence_hint": "Записываем фоновый шум: вентилятор, клавиатуру, комнату.",
+        "calibration.speech": "Теперь говорите!",
+        "calibration.speech_hint": "Говорите как на стриме: тихо, обычно и пару раз погромче.",
+        "calibration.done": "Готово",
+        "calibration.result": "Шумодав: {gate}. Пороги кадров: {thresholds}.",
+        "calibration.failed": "Голос почти не слышен",
+        "calibration.failed_hint": "Проверьте, что выбран правильный микрофон и он не выключен, и попробуйте ещё раз.",
+        "calibration.applied": "Пороги подобраны, шумодав: {gate}. Не забудьте сохранить профиль.",
+        "onboarding.step": "Шаг {current} из {total}",
+        "onboarding.next": "Далее",
+        "onboarding.back": "Назад",
+        "onboarding.finish": "Готово",
+        "onboarding.skip": "Пропустить настройку",
+        "onboarding.welcome_title": "Добро пожаловать в PNG Streamer",
+        "onboarding.welcome_text": "За пару минут настроим микрофон и аватар и подключим его к OBS. Всё это можно будет поменять позже.",
+        "onboarding.mic_title": "Микрофон",
+        "onboarding.mic_text": "Выберите микрофон и скажите что-нибудь — индикатор должен двигаться.",
+        "onboarding.avatar_title": "Аватар",
+        "onboarding.avatar_text": "Начните с примера или добавьте свои картинки.",
+        "onboarding.use_sample": "Пример",
+        "onboarding.use_own": "Свои картинки",
+        "onboarding.pick_images": "Выбрать картинки",
+        "onboarding.own_hint": "Картинки встанут кадрами по порядку имён файлов: первая — когда вы молчите, последняя — когда говорите громче всего. Можно перетащить файлы прямо сюда.",
+        "onboarding.avatar_name": "Мой аватар",
+        "onboarding.calibration_skip": "Можно пропустить — тогда пороги останутся стандартными.",
+        "onboarding.done_title": "Всё готово!",
+        "onboarding.done_text": "Сервер для OBS запущен. Добавьте аватар на сцену:",
+        "packs.import": "Импортировать аватар",
+        "packs.export": "Экспортировать аватар…",
+        "packs.filter": "Аватар PNG Streamer (*.pga *.pgs *.pngavatar)",
+        "packs.imported": "Аватар «{name}» добавлен",
+        "packs.exported": "Аватар сохранён: {name}",
+        "packs.import_failed": "Не удалось импортировать аватар: {error}",
+        "packs.export_failed": "Не удалось экспортировать аватар: {error}",
+        "api.title": "Управление извне",
+        "api.hint": "Stream Deck, Touch Portal, Bitfocus Companion или горячие клавиши системы могут менять профили изображений и звука, открывая эти адреса (GET или POST). Вместо имени можно указать номер профиля. Сервер для OBS должен быть запущен.",
+        "api.example_name": "имя",
+        "api.copy": "Скопировать адрес API",
+        "api.copied": "Адрес API скопирован",
     },
     "en": {
         "nav.launch": "Launch",
@@ -337,8 +421,132 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "setup.install": "Install",
         "setup.skip": "Run from here",
         "setup.failed": "Installation failed: {error}",
+        "launch.expression": "Expression",
+        "chip.expressions": "Expressions: {count}",
+        "tray.expression": "Expression",
+        "images.frames_of": "Frames · {name}",
+        "settings.run_wizard": "Run the setup wizard",
+        "mode.simple": "Simple",
+        "mode.simple_hint": "Frames by volume, blinking and shake — as before.",
+        "expressions.title": "Expressions",
+        "expressions.hint": "The first expression is the default one. Others are switched by hotkeys, the buttons on the Launch screen, the tray or the API.",
+        "expressions.add": "Add expression",
+        "expressions.name": "Name",
+        "expressions.hotkey": "Hotkey",
+        "expressions.hotkey_placeholder": "Press a shortcut",
+        "expressions.command": "System shortcut",
+        "expressions.copy_command": "Copy command",
+        "expressions.command_copied": "Command copied — bind it to a shortcut in your system settings",
+        "expressions.command_hint": "On Linux, bind the copied command to a shortcut in your keyboard settings (KDE, GNOME, etc.). The OBS server must be running.",
+        "expressions.hotkey_hint": "Works even when the window is minimized. Click the field, then press the key combination.",
+        "expressions.hotkey_busy": "{hotkey} is already taken by another program — choose a different one.",
+        "expressions.return_after": "Return after, s",
+        "expressions.delete": "Delete expression",
+        "expressions.delete_title": "Delete expression?",
+        "expressions.delete_text": "Expression \"{name}\" and its frames will be removed from the profile.",
+        "expressions.default_name": "Default",
+        "expressions.new_name": "Expression {index}",
+        "animation.title": "Animation",
+        "animation.hint": "The avatar hops when you start talking, stretches and squashes a little, breathes while silent and fades between frames.",
+        "animation.bounce": "Bounce",
+        "animation.squash": "Squash",
+        "animation.breathing": "Breathing",
+        "animation.transition": "Frame change",
+        "calibration.button": "Set thresholds from my voice",
+        "calibration.title": "Thresholds from your voice",
+        "calibration.intro": "First 3 seconds of silence, then 6 seconds of normal speech. The recording sets the noise gate and the frame thresholds.",
+        "calibration.start": "Start",
+        "calibration.retry": "Again",
+        "calibration.apply": "Apply",
+        "calibration.silence": "Stay quiet…",
+        "calibration.silence_hint": "Recording background noise: fans, keyboard, the room.",
+        "calibration.speech": "Now talk!",
+        "calibration.speech_hint": "Talk like on stream: quiet, normal and a couple of times louder.",
+        "calibration.done": "Done",
+        "calibration.result": "Noise gate: {gate}. Frame thresholds: {thresholds}.",
+        "calibration.failed": "Your voice is barely audible",
+        "calibration.failed_hint": "Check that the right microphone is selected and not muted, then try again.",
+        "calibration.applied": "Thresholds set, noise gate: {gate}. Remember to save the profile.",
+        "onboarding.step": "Step {current} of {total}",
+        "onboarding.next": "Next",
+        "onboarding.back": "Back",
+        "onboarding.finish": "Finish",
+        "onboarding.skip": "Skip setup",
+        "onboarding.welcome_title": "Welcome to PNG Streamer",
+        "onboarding.welcome_text": "In a couple of minutes we'll set up your microphone and avatar and connect it to OBS. You can change everything later.",
+        "onboarding.mic_title": "Microphone",
+        "onboarding.mic_text": "Pick your microphone and say something — the meter should move.",
+        "onboarding.avatar_title": "Avatar",
+        "onboarding.avatar_text": "Start with the sample or add your own images.",
+        "onboarding.use_sample": "Sample",
+        "onboarding.use_own": "My images",
+        "onboarding.pick_images": "Choose images",
+        "onboarding.own_hint": "Images become frames in file name order: the first is shown while you are silent, the last when you are loudest. You can drop files right here.",
+        "onboarding.avatar_name": "My avatar",
+        "onboarding.calibration_skip": "You can skip this — the thresholds will stay at their defaults.",
+        "onboarding.done_title": "All set!",
+        "onboarding.done_text": "The OBS server is running. Add the avatar to your scene:",
+        "packs.import": "Import avatar",
+        "packs.export": "Export avatar…",
+        "packs.filter": "PNG Streamer avatar (*.pga *.pgs *.pngavatar)",
+        "packs.imported": "Avatar \"{name}\" added",
+        "packs.exported": "Avatar saved: {name}",
+        "packs.import_failed": "Could not import the avatar: {error}",
+        "packs.export_failed": "Could not export the avatar: {error}",
+        "api.title": "Remote control",
+        "api.hint": "Stream Deck, Touch Portal, Bitfocus Companion or system shortcuts can switch image and sound profiles by opening these addresses (GET or POST). A profile number can be used instead of a name. The OBS server must be running.",
+        "api.example_name": "name",
+        "api.copy": "Copy API address",
+        "api.copied": "API address copied",
     },
 }
+
+
+from app import features  # noqa: E402
+from app.ui import i18n_stream  # noqa: E402
+
+_TRANSLATIONS["ru"].update(i18n_stream.RU)
+_TRANSLATIONS["en"].update(i18n_stream.EN)
+if features.STUDIO:
+    from app.ui import i18n_studio
+
+    _TRANSLATIONS["ru"].update(i18n_studio.RU)
+    _TRANSLATIONS["en"].update(i18n_studio.EN)
+for _obsolete in [k for k in _TRANSLATIONS["ru"] if k.startswith(("animation.", "expressions.")) and k not in (
+    "expressions.copy_command", "expressions.command_hint", "expressions.hotkey_placeholder", "expressions.command_copied",
+)]:
+    _TRANSLATIONS["ru"].pop(_obsolete, None)
+    _TRANSLATIONS["en"].pop(_obsolete, None)
+
+
+def _load_locales() -> None:
+    import json
+
+    from app import paths
+
+    global LANGUAGES
+    folders = [paths.RESOURCES_DIR / "assets" / "locales"]
+    if features.STUDIO:
+        folders.append(paths.RESOURCES_DIR / "studio" / "locales")
+    loaded = []
+    for code in LANGUAGE_NAMES:
+        if code in ("ru", "en"):
+            continue
+        data = {}
+        for folder in folders:
+            try:
+                part = json.loads((folder / f"{code}.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(part, dict):
+                data.update(part)
+        if data:
+            _TRANSLATIONS[code] = {**_TRANSLATIONS["en"], **{k: str(v) for k, v in data.items() if k in _TRANSLATIONS["en"]}}
+            loaded.append(code)
+    LANGUAGES = tuple(code for code in LANGUAGE_NAMES if code in ("ru", "en") or code in loaded)
+
+
+_load_locales()
 
 
 def _detect_unix_locale_name() -> str:
@@ -377,6 +585,8 @@ def detect_system_language() -> str:
     except Exception:
         pass
 
+    if lang_code in LANGUAGES and lang_code != "ru":
+        return lang_code
     if lang_code == "ru" or country_code in _RUSSIAN_SPEAKING_COUNTRIES:
         return "ru"
     return "en"
@@ -411,13 +621,16 @@ def get_language() -> str:
 
 def set_language(lang: str) -> None:
     global _current_language
-    _current_language = lang if lang in _TRANSLATIONS else "ru"
+    _current_language = lang if lang in _TRANSLATIONS else "en"
     sm.update_settings({"language": _current_language})
 
 
 def t(key: str, **kwargs) -> str:
-    table = _TRANSLATIONS.get(get_language(), _TRANSLATIONS["ru"])
-    template = table.get(key, key)
+    table = _TRANSLATIONS.get(get_language(), _TRANSLATIONS["en"])
+    template = table.get(key) or _TRANSLATIONS["en"].get(key, key)
     if kwargs:
-        return template.format(**kwargs)
+        try:
+            return template.format(**kwargs)
+        except (KeyError, IndexError, ValueError):  # a broken translation must not crash the UI
+            return _TRANSLATIONS["en"].get(key, key).format(**kwargs)
     return template

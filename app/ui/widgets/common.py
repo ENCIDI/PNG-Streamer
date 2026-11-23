@@ -58,6 +58,7 @@ def clear_layout(layout) -> None:
         item = layout.takeAt(0)
         widget = item.widget()
         if widget is not None:
+            widget.hide()
             widget.deleteLater()
         elif item.layout() is not None:
             clear_layout(item.layout())

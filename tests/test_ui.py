@@ -4,6 +4,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from app.modules import audio_manager as am, logic_manager as lm, storage_manager as sm, web_manager as wm
+from app import features
 from app.ui import i18n, theme
 from app.ui.widgets import dialogs
 
@@ -160,6 +161,161 @@ def test_all_translation_keys_exist():
     assert set(_TRANSLATIONS["ru"]) == set(_TRANSLATIONS["en"])
     used = set()
     for file in Path("app").rglob("*.py"):
+        if not features.STUDIO and ("studio" in file.parts or file.name == "i18n_studio.py"):
+            continue
         used |= set(re.findall(r'i18n\.t\(\s*"([a-z_]+\.[a-z_]+)"', file.read_text(encoding="utf-8")))
     missing = used - set(_TRANSLATIONS["ru"])
     assert not missing
+
+
+def test_locale_files_match_english():
+    import json
+    import re
+    from pathlib import Path
+
+    from app.ui import i18n
+
+    english = i18n._TRANSLATIONS["en"]
+    placeholders = lambda text: set(re.findall(r"\{\w*\}", text))
+    folders = [Path("app/assets/locales")] + ([Path("app/studio/locales")] if features.STUDIO else [])
+    for file in [f for folder in folders for f in folder.glob("*.json")]:
+        table = json.loads(file.read_text(encoding="utf-8"))
+        assert file.stem in i18n.LANGUAGE_NAMES and file.stem in i18n.LANGUAGES
+        assert not set(table) - set(english), file.stem
+        for key, text in table.items():
+            assert placeholders(text) == placeholders(english[key]), (file.stem, key)
+
+
+def test_onboarding_with_own_images(application, qt_app, tmp_path, monkeypatch):
+    from app.modules import calibration
+    from app.ui.onboarding import OnboardingDialog
+
+    files = []
+    for name in ("b_talk.png", "a_idle.png"):
+        path = tmp_path / name
+        path.write_bytes((sm.paths.IMAGES_DIR / "image0.png").read_bytes())
+        files.append(path)
+    monkeypatch.setattr(application.state, "start_server", lambda port=None: True)
+    dialog = OnboardingDialog(application.window, application.state)
+    dialog._go(2)
+    dialog._add_images(files)
+    assert dialog._own_images == ["a_idle.png", "b_talk.png"]
+    dialog._on_calibrated(calibration.Calibration(noise_level=5, gate=12, thresholds=[0, 37]))
+    dialog._finish()
+
+    active = application.state.active_image_profile()
+    frames = active["images"]
+    assert [(f["path-to-image"], f["volume-level"]) for f in frames] == [("a_idle.png", 0), ("b_talk.png", 37)]
+    assert sm.get_sound_profile_by_id(1)["noise-threshold"] == 12.0
+    assert application.state.settings()["onboarding-done"] is True
+
+
+def test_import_pack_from_screen(application, tmp_path):
+    from app.modules import avatar_pack
+
+    pack = avatar_pack.export_pack(sm.get_profile_by_id(1), tmp_path / "sample")
+    screen = application.window.screens[2]
+    screen.import_pack(pack)
+
+    names = [p["name"] for p in sm.list_profiles()]
+    assert names == ["sample", "sample (2)"]
+    assert screen._selected_id == sm.list_profiles()[1]["id"]
+
+
+def test_widget_socket_on_live_server(application):
+    import asyncio
+    import json
+
+    import websockets
+
+    port = _free_port()
+    assert application.state.start_server(port)
+
+    async def receive():
+        async with websockets.connect(f"ws://127.0.0.1:{port}/ws") as ws:
+            return json.loads(await ws.recv()), json.loads(await ws.recv())
+
+    profile, state = asyncio.run(receive())
+    application.state.stop_server()
+    assert profile["type"] == "simple" and profile["images"]
+    assert state["type"] == "state" and state["image"] in ("image2.png", "image1.png"), "talking frame or its blink"
+
+
+def test_panel_layout_editor(application, qt_app):
+    from app.modules import panel_layout as pl
+
+    screen = application.window.screens[4]
+    application.window.show_page(4)
+    screen.show_tab(0)
+    model = screen.editor.model
+    assert model.auto and sm.load_settings()["settings"]["panel-layout"] is None
+
+    first = model.add({"type": "meter"})
+    assert not model.auto, "the first change makes the layout the user's own"
+    second = model.add({"type": "button", "action": "profile", "target": 1}, at=(3, 3))
+    page = model.page()
+    assert model.item(second)["x"] == 3 and model.item(second)["y"] == 3
+    assert not model.update_item(second, x=model.item(first)["x"], y=model.item(first)["y"]), "no overlapping"
+    assert model.update_item(second, x=0, y=5)
+    model.update_item(second, merge="text", label="Л")
+    model.update_item(second, merge="text", label="Лис")
+    assert model.item(second)["label"] == "Лис"
+    model.undo()
+    assert model.item(second)["label"] == "", "typing is one undo step"
+    model.redo()
+    model.save()
+    stored = sm.load_settings()["settings"]["panel-layout"]
+    assert any(i.get("label") == "Лис" for i in stored["pages"][0]["items"])
+
+    model.set_cols(2)
+    assert all(i["x"] + i["w"] <= 2 for i in model.page()["items"])
+    model.add_page()
+    assert model.page_index == 1 and len(model.layout["pages"]) == 2
+    model.reset_auto()
+    assert model.auto and sm.load_settings()["settings"]["panel-layout"] is None
+    del page, pl
+    chat_screen = application.window.screens[3]
+    application.window.show_page(3)
+    qt_app.processEvents()
+    assert chat_screen.preview.sample, "sample messages until the chat has some"
+
+
+def test_grid_canvas_mouse_move_and_resize(application, qt_app):
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtTest import QTest
+
+    screen = application.window.screens[4]
+    application.window.show_page(4)
+    screen.show_tab(0)
+    application.window.resize(1280, 800)
+    application.window.show()
+    qt_app.processEvents()
+    model, canvas = screen.editor.model, screen.editor.canvas
+    for item in list(model.page()["items"]):  # start from an empty grid
+        model.delete(item["id"])
+    item_id = model.add({"type": "meter"}, at=(0, 0))
+    model.update_item(item_id, w=1, h=1)
+    qt_app.processEvents()
+
+    def center(x, y):
+        return canvas.rect_of(x, y, 1, 1).center().toPoint()
+
+    QTest.mousePress(canvas, Qt.LeftButton, Qt.NoModifier, center(0, 0))
+    QTest.mouseMove(canvas, center(1, 0))
+    QTest.mouseMove(canvas, center(2, 1))
+    QTest.mouseRelease(canvas, Qt.LeftButton, Qt.NoModifier, center(2, 1))
+    assert (model.item(item_id)["x"], model.item(item_id)["y"]) == (2, 1)
+
+    handle = canvas._handle(model.item(item_id)).center().toPoint()
+    QTest.mousePress(canvas, Qt.LeftButton, Qt.NoModifier, handle)
+    QTest.mouseMove(canvas, center(3, 2) + QPoint(0, 0))
+    QTest.mouseRelease(canvas, Qt.LeftButton, Qt.NoModifier, center(3, 2))
+    assert (model.item(item_id)["w"], model.item(item_id)["h"]) == (2, 2)
+
+    canvas.setFocus()
+    QTest.keyClick(canvas, Qt.Key_Delete)
+    assert model.item(item_id) is None
+    model.undo()
+    assert model.item(item_id) is not None
+
+

@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>PNG Streamer chat</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  :root { --font: __FONT__px; --bg: __BG__; }
+  body { font: 600 var(--font)/1.35 Inter, "Segoe UI", system-ui, sans-serif; color: #fff; }
+  /* Anchored to the bottom: when there are too many messages the oldest go off the top. */
+  #list { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; }
+  .msg { margin-top: 8px; padding: 8px 12px; border-radius: 12px; background: rgba(13, 14, 18, var(--bg));
+    text-shadow: 0 1px 2px rgba(0,0,0,.6); word-wrap: break-word; max-width: 100%;
+    animation: in .25s ease-out; transition: opacity .6s ease, transform .6s ease; }
+  .msg.out { opacity: 0; transform: translateX(-12px); }
+  .msg b { font-weight: 800; }
+  .msg img { height: 1.5em; vertical-align: middle; margin: -3px 1px; }
+  .em { position: relative; display: inline-block; vertical-align: middle; }
+  .em img.zw { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; }
+  @keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div id="list"></div>
+<script>
+function appendEmote(row, f) {
+  // 7TV zero-width emotes (RainTime, PETPET…) go on top of the emote before them.
+  const img = document.createElement("img"); img.src = f.url; img.alt = f.text; img.title = f.text;
+  let last = row.lastChild;
+  if (last && last.nodeType === 3 && !last.textContent.trim()) last = last.previousSibling;
+  if (f.zero_width && last && last.classList && last.classList.contains("em")) { img.className = "zw"; last.append(img); return; }
+  const box = document.createElement("span"); box.className = "em"; box.append(img); row.append(box);
+}
+let MAX = __MAX__, FADE = __FADE__ * 1000;
+function applyStyle(s) {
+  document.documentElement.style.setProperty("--font", `${s.font}px`);
+  document.documentElement.style.setProperty("--bg", s.bg);
+  MAX = s.max; FADE = s.fade * 1000;
+  while (shown.size > MAX) remove(shown.keys().next().value);
+}
+const shown = new Map();
+function render(m) {
+  const row = document.createElement("div"); row.className = "msg";
+  const name = document.createElement("b"); name.textContent = m.name + (m.action ? " " : ": "); name.style.color = m.color;
+  row.append(name);
+  for (const f of m.fragments) {
+    if (f.type === "emote") appendEmote(row, f);
+    else row.append(document.createTextNode(f.text));
+  }
+  if (m.action) row.style.fontStyle = "italic";
+  document.getElementById("list").append(row);
+  shown.set(m.id, row);
+  if (FADE > 0) setTimeout(() => remove(m.id), FADE);
+  while (shown.size > MAX) remove(shown.keys().next().value);
+}
+function remove(id) {
+  const row = shown.get(id); if (!row) return;
+  shown.delete(id); row.classList.add("out"); setTimeout(() => row.remove(), 650);
+}
+function sync(messages) {
+  const ids = new Set(messages.map((m) => m.id));
+  for (const id of [...shown.keys()]) if (!ids.has(id)) remove(id);  // deleted by moderators
+  const fresh = Date.now() / 1000 - (FADE > 0 ? FADE / 1000 : 1e9);
+  for (const m of messages.slice(-MAX)) if (!shown.has(m.id) && m.time >= fresh && !seen.has(m.id)) { seen.add(m.id); render(m); }
+}
+const seen = new Set();
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/chat/ws`);
+  ws.onmessage = (e) => { const msg = JSON.parse(e.data); if (msg.type === "chat") sync(msg.messages); else if (msg.type === "style") applyStyle(msg); };
+  ws.onclose = () => setTimeout(connect, 1500);
+}
+connect();
+</script>
+</body>
+</html>

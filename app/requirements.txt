@@ -2,5 +2,7 @@ numpy
 sounddevice
 fastapi
 uvicorn
+websockets
 certifi
+segno
 PySide6-Essentials==6.12.0

@@ -35,3 +35,12 @@ desktop.ini
 
 # Local notes
 CHANGELOG.md
+
+# Internal design notes
+/docs/internal/
+
+# The Studio: developed locally, not released yet (see app/features.py)
+/app/studio/
+/app/ui/studio/
+/app/ui/i18n_studio.py
+/tests/studio/

@@ -14,20 +14,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app import paths
+from app import features, paths
 from app.ui import i18n, icons, theme
 from app.ui.screens.base import Screen
 from app.ui.screens.images import ImagesScreen
 from app.ui.screens.launch import LaunchScreen
 from app.ui.screens.settings import SettingsScreen
 from app.ui.screens.sound import SoundScreen
+from app.ui.screens.stream import ChatScreen, PanelScreen
 from app.ui.state import AppState
 from app.ui.updater import Updater
 from app.ui.widgets.toast import Toast
 from app.version import __version__
 
 _FRAME_MS = 16
-_NAV = (("launch", "nav.launch"), ("mic", "nav.sound"), ("image", "nav.images"), ("settings", "nav.settings"))
+_NAV = (("launch", "nav.launch"), ("mic", "nav.sound"), ("image", "nav.images"), ("chat", "nav.chat"),
+        ("grid", "nav.panel"), ("settings", "nav.settings"))
 
 
 def app_icon() -> QIcon:
@@ -122,8 +124,9 @@ class UpdateBanner(QFrame):
 
 class MainWindow(QMainWindow):
     close_requested = Signal()
+    studio_requested = Signal()
 
-    def __init__(self, state: AppState, updater: Updater):
+    def __init__(self, state: AppState, updater: Updater, hotkey_manager=None):
         super().__init__()
         self.state = state
         self.updater = updater
@@ -153,7 +156,9 @@ class MainWindow(QMainWindow):
         self.screens: List[Screen] = [
             LaunchScreen(state),
             SoundScreen(state),
-            ImagesScreen(state),
+            ImagesScreen(state, hotkey_manager),
+            ChatScreen(state),
+            PanelScreen(state),
             SettingsScreen(state, updater),
         ]
         for screen in self.screens:
@@ -206,6 +211,14 @@ class MainWindow(QMainWindow):
             self.nav_buttons.append(button)
         self.nav_buttons[0].setChecked(True)
         side.addStretch()
+        # The Studio is a separate window, not a page of this one.
+        self.studio_button = None
+        if features.STUDIO:
+            from app.ui.studio.window import nav_button
+
+            self.studio_button = nav_button(self.studio_requested)
+            side.addWidget(self.studio_button)
+            side.addSpacing(10)
         version = QLabel(f"v{__version__}")
         version.setObjectName("faint")
         side.addWidget(version)
@@ -228,6 +241,8 @@ class MainWindow(QMainWindow):
     def retranslate(self) -> None:
         for button, (_, key) in zip(self.nav_buttons, _NAV):
             button.setText("  " + i18n.t(key))
+        if self.studio_button is not None:
+            self.studio_button.retranslate()
         self.banner.retranslate()
 
     def bring_to_front(self) -> None:

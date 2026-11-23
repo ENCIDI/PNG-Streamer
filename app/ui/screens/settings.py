@@ -1,18 +1,28 @@
 import PySide6
-from PySide6.QtCore import QUrl, Qt, qVersion
-from PySide6.QtGui import QDesktopServices, QFont, QPixmap
-from PySide6.QtWidgets import QButtonGroup, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSystemTrayIcon, QVBoxLayout
+from PySide6.QtCore import QUrl, Qt, Signal, qVersion
+from PySide6.QtGui import QDesktopServices, QFont, QGuiApplication, QPixmap
+from PySide6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSystemTrayIcon,
+    QVBoxLayout,
+    QWidget,
+)
 
-from app import paths
+from app import features, paths
 from app.modules import autostart_manager as autostart, update_manager as um
 from app.ui import i18n, icons, theme
 from app.ui.screens.base import Screen
 from app.ui.state import AppState
 from app.ui.updater import Updater
-from app.ui.widgets.common import Card, SwitchRow, muted
+from app.ui.widgets.common import Combo, Card, SwitchRow, muted
 from app.version import __version__
 
-_LANGUAGE_NAMES = {"ru": "Русский", "en": "English"}
+
 
 
 def open_path(path) -> None:
@@ -21,6 +31,8 @@ def open_path(path) -> None:
 
 
 class SettingsScreen(Screen):
+    wizard_requested = Signal()
+
     def __init__(self, state: AppState, updater: Updater):
         super().__init__(state)
         self.updater = updater
@@ -33,22 +45,12 @@ class SettingsScreen(Screen):
         language_row = QHBoxLayout()
         self.language_label = QLabel()
         language_row.addWidget(self.language_label, 1)
-        segmented = QFrame()
-        segmented.setObjectName("segmented")
-        segment_layout = QHBoxLayout(segmented)
-        segment_layout.setContentsMargins(3, 3, 3, 3)
-        segment_layout.setSpacing(2)
-        self.language_group = QButtonGroup(self)
-        for lang in i18n.LANGUAGES:
-            button = QPushButton(_LANGUAGE_NAMES[lang])
-            button.setObjectName("segment")
-            button.setCheckable(True)
-            button.setCursor(Qt.PointingHandCursor)
-            button.setChecked(lang == i18n.get_language())
-            button.clicked.connect(lambda _=False, code=lang: state.set_language(code))
-            self.language_group.addButton(button)
-            segment_layout.addWidget(button)
-        language_row.addWidget(segmented)
+        self.language_combo = Combo()
+        self.language_combo.setMinimumWidth(200)
+        self.language_combo.set_items([(i18n.LANGUAGE_NAMES[code], code) for code in i18n.LANGUAGES], i18n.get_language())
+        self.language_combo.currentIndexChanged.connect(
+            lambda _: self.language_combo.currentData() != i18n.get_language() and state.set_language(self.language_combo.currentData()))
+        language_row.addWidget(self.language_combo)
         self.general_card.body.addLayout(language_row)
 
         self.tray_available = QSystemTrayIcon.isSystemTrayAvailable()
@@ -65,7 +67,31 @@ class SettingsScreen(Screen):
         self.server_row.toggled.connect(lambda v: state.update_settings(start_server_on_launch=v))
         for row in (self.tray_row, self.autostart_row, self.minimized_row, self.server_row):
             self.general_card.body.addWidget(row)
+        self.wizard_button = QPushButton()
+        self.wizard_button.setCursor(Qt.PointingHandCursor)
+        self.wizard_button.clicked.connect(self.wizard_requested)
+        self.general_card.body.addWidget(self.wizard_button, 0, Qt.AlignLeft)
         self.general_card.body.addStretch()
+
+        # control API
+        self.api_card = Card()
+        self.api_hint = muted("", "faint", wrap=True)
+        self.api_card.body.addWidget(self.api_hint)
+        self.api_examples = QLabel()
+        self.api_examples.setFont(theme.mono_font(8.5))
+        self.api_examples.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.api_examples.setStyleSheet(
+            f"background: {theme.FIELD}; border: 1px solid {theme.BORDER}; border-radius: 10px; padding: 10px 12px;"
+        )
+        self.api_card.body.addWidget(self.api_examples)
+        api_buttons = QHBoxLayout()
+        self.copy_api = QPushButton()
+        self.copy_api.setIcon(icons.icon("copy", theme.TEXT))
+        self.copy_api.setCursor(Qt.PointingHandCursor)
+        self.copy_api.clicked.connect(self._copy_api)
+        api_buttons.addWidget(self.copy_api)
+        api_buttons.addStretch()
+        self.api_card.body.addLayout(api_buttons)
 
         # updates
         self.updates_card = Card()
@@ -141,18 +167,28 @@ class SettingsScreen(Screen):
 
         grid.addWidget(self.general_card, 0, 0)
         grid.addWidget(self.updates_card, 0, 1)
-        grid.addWidget(self.data_card, 1, 0)
-        grid.addWidget(self.about_card, 1, 1)
+        grid.addWidget(self.api_card, 1, 0, 1, 2)
+        grid.addWidget(self.data_card, 2, 0)
+        grid.addWidget(self.about_card, 2, 1)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
-        self.root.addLayout(grid)
-        self.root.addStretch()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 6, 0)
+        content_layout.addLayout(grid)
+        content_layout.addStretch()
+        scroll.setWidget(content)
+        self.root.addWidget(scroll, 1)
 
         updater.status_changed.connect(self._refresh_updates)
         self.retranslate()
 
     def showEvent(self, event) -> None:
         self._load_values()
+        self._refresh_api()
         super().showEvent(event)
 
     def _load_values(self) -> None:
@@ -162,8 +198,25 @@ class SettingsScreen(Screen):
         self.minimized_row.setChecked(bool(settings.get("start-minimized", False)))
         self.server_row.setChecked(bool(settings.get("start-server-on-launch", False)))
         self.updates_row.setChecked(bool(settings.get("check-updates", True)))
-        for button, lang in zip(self.language_group.buttons(), i18n.LANGUAGES):
-            button.setChecked(lang == i18n.get_language())
+        self.language_combo.set_items([(i18n.LANGUAGE_NAMES[code], code) for code in i18n.LANGUAGES], i18n.get_language())
+
+    def _api_base(self) -> str:
+        return f"http://127.0.0.1:{self.state.port()}/api"
+
+    def _refresh_api(self) -> None:
+        base = self._api_base()
+        example = i18n.t("api.example_name")
+        studio = [f"{base}/param/{example}", f"{base}/param/{example}?value=1", f"{base}/sequence/{example}"]
+        self.api_examples.setText(
+            "\n".join(
+                (studio if features.STUDIO else [])
+                + [f"{base}/profile/{example}", f"{base}/sound-profile/{example}", f"{base}/status"]
+            )
+        )
+
+    def _copy_api(self) -> None:
+        QGuiApplication.clipboard().setText(self._api_base())
+        self.state.notify.emit(i18n.t("api.copied"), "info")
 
     def _on_autostart(self, enabled: bool) -> None:
         if not autostart.set_enabled(enabled):
@@ -200,6 +253,11 @@ class SettingsScreen(Screen):
         self.autostart_row.set_text(i18n.t("settings.autostart"))
         self.minimized_row.set_text(i18n.t("settings.start_minimized"))
         self.server_row.set_text(i18n.t("settings.start_server"))
+        self.wizard_button.setText(i18n.t("settings.run_wizard"))
+        self.api_card.set_title(i18n.t("api.title"))
+        self.api_hint.setText(i18n.t("api.hint"))
+        self.copy_api.setText(" " + i18n.t("api.copy"))
+        self._refresh_api()
         self.updates_card.set_title(i18n.t("settings.updates"))
         self.updates_row.set_text(i18n.t("settings.check_updates"))
         self.check_button.setText(i18n.t("settings.check_now"))

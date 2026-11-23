@@ -52,7 +52,13 @@ class Tray(QObject):
         self.icon.setContextMenu(self.menu)
         self.icon.activated.connect(self._on_activated)
         self._rebuild_menu()
-        for signal in (state.server_changed, state.microphone_changed, state.profiles_changed, state.language_changed):
+        for signal in (
+            state.server_changed,
+            state.microphone_changed,
+            state.profiles_changed,
+            state.language_changed,
+            state.avatar_changed,
+        ):
             signal.connect(self.refresh)
         updater.update_found.connect(lambda _: self.refresh())
         self.refresh()
@@ -113,6 +119,15 @@ class Tray(QObject):
             self.state.active_image_profile_id(),
             self.state.set_active_image_profile,
         )
+        params = [p for p in self.state.avatar_params() if p["type"] in ("trigger", "bool")]
+        if params:
+            submenu = menu.addMenu(i18n.t("tray.params"))
+            for param in params:
+                action = submenu.addAction(param.get("name") or param["id"])
+                if param["type"] == "bool":
+                    action.setCheckable(True)
+                    action.setChecked(bool(param.get("value")))
+                action.triggered.connect(lambda _=False, pid=param["id"]: self.state.fire_param(pid))
         menu.addSeparator()
         if self.updater.update is not None:
             menu.addAction(i18n.t("tray.update", version=self.updater.update.version)).triggered.connect(

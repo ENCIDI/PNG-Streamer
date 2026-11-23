@@ -6,33 +6,27 @@
 ![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux-informational)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-**EN [English](#english)&nbsp;&nbsp;|&nbsp;&nbsp;RU [Русский](#русский)**
-
----
-
-## English
-
-**PNG Streamer** is a desktop app for streamers and content creators. It switches your PNG avatar's (PNGTuber / VTuber overlay) frames in real time based on your microphone volume, makes it blink and shake, and serves a transparent web widget you add to OBS Studio as a Browser Source.
+**PNG Streamer** is a desktop app for streamers and content creators. It animates your PNG avatar (PNGTuber / VTuber overlay) from your microphone in real time and serves a transparent web widget you add to OBS Studio as a Browser Source. Frames switch by volume, the avatar blinks and shakes — and on top of that there is a control panel on your phone and a Twitch chat overlay.
 
 > [!NOTE]
-> The interface is available in Russian and English — the language is detected from your system and can be changed in **Settings**.
+> The interface is available in English, Russian, Ukrainian, Spanish, Portuguese (Brazil), German, French, Italian, Polish, Turkish, Japanese, Korean and Simplified Chinese — the language is detected from your system and can be changed in **Settings**.
 
 ---
 
 ### 🌟 Key Features
 
-*   🖥️ **Native Qt interface:** dark graphite theme with a lime accent, works the same on Windows and Linux (X11 and Wayland). Four sections — **Launch**, **Sound**, **Images**, **Settings**.
-*   👀 **Live preview:** see exactly what OBS will show, including blinking and shaking. The volume meter shows every frame's thumbnail on its threshold and highlights the frame that is currently active.
-*   🎤 **Microphone monitoring:** real-time RMS volume capture, updated at 30 FPS.
-*   🎧 **Sound profiles:** audio system, device, noise suppression and compressor are saved as switchable profiles. Changes to the active profile are applied live while you edit, so you can tune them by ear.
-*   🤫 **Two noise suppression algorithms:** adaptive (follows the background noise) and fixed threshold.
-*   🎚️ **Dynamic range compressor:** tames screaming and laughing so loud peaks do not skip the middle frames.
-*   🎭 **Image profiles:** any number of profiles and frames, image picker with thumbnails, drag-and-drop import of new images, explicit save with unsaved-changes tracking.
-*   🫨 **Shake level** per frame and 👁️ **random blinking** with a closed-eyes image per frame.
-*   🌐 **FastAPI OBS widget:** transparent HTML5 page; if there is no frame it serves a transparent pixel instead of a broken image.
-*   📥 **System tray:** status at a glance (live / stopped / microphone error), start and stop the server, copy the OBS address and switch profiles without opening the window.
-*   🔄 **Automatic updates** from GitHub Releases that never touch your profiles and images.
-*   ⚙️ **Start with the system**, optionally minimized to tray and with the OBS server already running.
+*   🖥️ **Native Qt interface:** dark graphite theme with a lime accent, works the same on Windows and Linux (X11 and Wayland). Six sections — **Launch**, **Sound**, **Images**, **Chat**, **Web panel**, **Settings**.
+*   🎭 **Image profiles:** frames by volume, random blinking and shake; **In OBS** sets where the avatar stands in the Browser source.
+*   📱 **Web control panel:** turn your phone, tablet or laptop into a Stream Deck — profile switches, the live avatar, the microphone level and chat. Scan the QR code in the app, no IP addresses to look up. The screen does not go to sleep while the panel is open.
+*   💬 **Twitch chat overlay:** a separate browser source for OBS with names, colors, Twitch and 7TV emotes; messages removed by moderators disappear. Read anonymously — no login.
+*   👀 **Live preview:** see exactly what OBS will show. The volume meter shows every frame's thumbnail on its threshold and highlights the active one.
+*   🎤 **Microphone monitoring:** real-time RMS volume capture.
+*   🎧 **Sound profiles:** audio system, device, noise suppression (adaptive or fixed) and a compressor that tames screaming and laughing — applied live while you edit.
+*   🧙 **Setup wizard** and 🎯 **thresholds from your voice:** stay quiet for 3 seconds, talk for 6 — the noise gate and frame thresholds are set automatically.
+*   🎛️ **Remote control API** for Stream Deck, Touch Portal, Bitfocus Companion or system shortcuts: switch image and sound profiles.
+*   📦 **Avatar packs:** export an avatar into one `.pga` file and import it with a double click — easy to share or sell.
+*   🌐 **Real-time OBS widget:** fed over WebSocket with all images preloaded — no lag and no flicker.
+*   📥 **System tray**, 🔄 **automatic updates** from GitHub Releases that never touch your data, and ⚙️ **start with the system**.
 
 ---
 
@@ -79,6 +73,47 @@ On Windows `PNGStreamer.bat` does all of this automatically (including installin
 
 ---
 
+### 🖼️ In OBS: where the avatar stands
+
+In **Images**, the **In OBS** card of every profile sets where the avatar stands in the Browser source: anchor (e.g. bottom center), scale, offset and a horizontal flip. Drag the preview, the wheel scales, a double click puts it back. Profiles with differently sized images then stay in place when you switch between them.
+
+### 🎛️ Remote control API
+
+While the OBS server is running, any tool that can open a URL can switch profiles (GET or POST, names are case-insensitive, a profile number works too):
+
+```text
+http://127.0.0.1:8642/api/profile/Fox            switch the image profile
+http://127.0.0.1:8642/api/sound-profile/Night    switch the sound profile
+http://127.0.0.1:8642/api/status                 current state (JSON)
+http://127.0.0.1:8642/api/profiles               all profiles (JSON)
+```
+
+**Stream Deck:** use a "Website" / HTTP request action (for example the *API Ninja* or *Web Requests* plugin). **Bitfocus Companion:** the *Generic HTTP* module. **Touch Portal:** the *HTTP GET* action.
+
+### 📱 Web control panel
+
+1. Open **Web panel → Connect** and turn on **Access from other devices**. It is off by default.
+2. Scan the QR code with your phone's camera (or open the link). The device must be on the same Wi-Fi network. If the computer has several networks, pick the right address in the list.
+3. On Windows the firewall may ask once whether to allow the app — allow it for **private networks**.
+
+The link contains a secret key; after the first visit the device remembers it. **Disconnect all devices** creates a new key, and old links stop working. The panel shows the live avatar, the microphone level, the image and sound profiles and, if enabled, the chat. The **⛶** button in its header switches to full screen; added to the home screen it opens like an app. The screen stays on while the panel is open (tap once if the browser asks).
+
+**Your own layout** (**Web panel → Layout**): until you change anything, the panel shows the avatar, the microphone level and the profile switchers. The editor is a grid like a Stream Deck: drag widgets from the list onto the cells, move them, resize them by the corner and split them into pages with their own number of columns. Widgets: image and sound profile buttons or switchers, headings, the microphone level, the Twitch chat and the live **avatar**. Buttons get their own labels and colors. Everything is saved at once and appears on connected devices right away; **Ctrl+Z** undoes, **Open panel** shows the result in your browser.
+
+### 💬 Twitch chat overlay
+
+1. In **Chat**, enter your channel name (or paste its link) and turn on **Connect chat**.
+2. Add another **Browser** source in OBS with `http://127.0.0.1:8642/chat` (e.g. `400` × `600`).
+3. The number of messages, how long they stay (0 — forever), the font size and the background are set next to a live preview. Bots (Nightbot, StreamElements…) and !commands can be hidden. Changes reach the overlay in OBS without reloading it.
+
+The chat is read anonymously, without logging in. Messages removed by moderators and timed-out users disappear from the overlay too. **7TV** emotes (global and the channel's own, including zero-width ones like RainTime) are shown in the overlay, the preview and the web panel; they can be turned off.
+
+### 📦 Avatar packs
+
+In **Images**, open a profile's **⋯** menu → **Export avatar…** to save it with all its images into one `.pga` file. Import with the download button above the profile list, by dropping the file onto the window or — on Windows — by double-clicking it.
+
+---
+
 ### 🔄 Updates and your data
 
 *   Profiles, images and logs live in the `data` folder **next to the program**. Updates and reinstalls never touch it; the uninstaller asks before deleting it.
@@ -96,12 +131,12 @@ PNGStreamer/
     ├── settings.json              # General settings
     ├── profiles.json              # Image profiles (frames, thresholds, blink, shake)
     ├── sound_profiles.json        # Sound profiles (device, noise suppression, compressor)
-    ├── images/                    # Avatar images (*.png, *.jpg, *.gif, *.webp)
+    ├── images/                    # Simple-mode images (*.png, *.jpg, *.gif, *.webp)
     ├── logs/                      # app.log
     └── backups/                   # Settings backups made before updates
 ```
 
-Repository layout: `app/ui` — Qt interface, `app/modules` — audio, storage, web server, updates and autostart, `app/defaults` — the sample profile copied into `data` on first start, `packaging` — PyInstaller, Inno Setup and AppImage build files, `tests` — pytest suite.
+Repository layout: `app/ui` — Qt interface, `app/modules` — audio, storage, web server, LAN access, Twitch chat, updates and autostart, `app/assets/panel` — the web panel and chat overlay pages, `app/defaults` — the sample profile copied into `data` on first start, `packaging` — PyInstaller, Inno Setup and AppImage build files, `tests` — pytest suite.
 
 ---
 
@@ -112,7 +147,7 @@ Everything is editable in the app, but the files in `data/` are plain JSON. Miss
 #### 1. System settings (`settings.json`)
 ```json
 {
-  "schema-version": 1,
+  "schema-version": 4,
   "settings": {
     "active-image-profile-id": 1,
     "active-sound-profile-id": 1,
@@ -121,15 +156,29 @@ Everything is editable in the app, but the files in `data/` are plain JSON. Miss
     "minimize-to-tray-on-close": true,
     "start-minimized": false,
     "start-server-on-launch": false,
-    "check-updates": true
+    "check-updates": true,
+    "lan-access": false,
+    "twitch-channel": "",
+    "chat-enabled": false,
+    "chat-max": 12,
+    "chat-fade-seconds": 45,
+    "chat-font-size": 20,
+    "chat-bg-opacity": 72,
+    "chat-hide-commands": false,
+    "chat-7tv": true,
+    "chat-hidden-users": "nightbot, streamelements, moobot, fossabot, streamlabs",
+    "panel-layout": null
   }
 }
 ```
 - `schema-version` — data format version, used to migrate files after updates.
 - `active-image-profile-id` / `active-sound-profile-id` — the active profiles.
 - `server-port` — port of the OBS widget server.
-- `language` — `"ru"` or `"en"`.
+- `language` — `"en"`, `"ru"`, `"uk"`, `"es"`, `"pt"`, `"de"`, `"fr"`, `"it"`, `"pl"`, `"tr"`, `"ja"`, `"ko"` or `"zh"`.
 - `minimize-to-tray-on-close`, `start-minimized`, `start-server-on-launch`, `check-updates` — the switches from **Settings**.
+- `lan-access` — the web panel is reachable from other devices; the pairing key is stored in `lan-token`.
+- `twitch-channel`, `chat-enabled`, `chat-max`, `chat-fade-seconds` (0 — never hide), `chat-font-size`, `chat-bg-opacity` (0–100), `chat-hide-commands`, `chat-hidden-users`, `chat-7tv` — the chat overlay.
+- `panel-layout` — the web panel layout: pages with `cols` and widgets with their cell position `x`, `y` and size `w`, `h`; `null` — automatic.
 - The app also stores window geometry and update-check bookkeeping here.
 
 #### 2. Sound profiles (`sound_profiles.json`)
@@ -165,24 +214,28 @@ Everything is editable in the app, but the files in `data/` are plain JSON. Miss
     {
       "id": 1,
       "name": "sample",
+      "mode": "simple",
       "images": [
         { "id": 0, "path-to-image": "image3.png", "volume-level": 0, "shake-level": 0 },
-        { "id": 1, "path-to-image": "image2.png", "volume-level": 30, "shake-level": 1 },
-        { "id": 2, "path-to-image": "image2.png", "volume-level": 80, "shake-level": 99 }
+        { "id": 1, "path-to-image": "image2.png", "volume-level": 30, "shake-level": 1 }
       ],
       "blink": { "interval-min-ms": 2000, "interval-max-ms": 5000, "duration-ms": 100 },
       "blink-images": [
         { "id": 0, "path-to-image": "image0.png" },
         { "id": 1, "path-to-image": "image1.png" }
-      ]
+      ],
+      "output": { "anchor": "bottom", "scale": 1.0, "x": 0, "y": 0, "flip": false }
     }
   ]
 }
 ```
+- `output` — where the avatar stands in OBS: `anchor` (`center`, `bottom`, `bottom-left`, `top-right`…), `scale`, `x` and `y` in % of the source, `flip`.
 - `images[].path-to-image` — file name in `data/images` (or an absolute path), shown when volume `>= volume-level`.
 - `images[].shake-level` — shake amplitude in the OBS widget (0 — none).
 - `blink` — interval between blinks and blink duration, in milliseconds.
 - `blink-images` — the closed-eyes image for the frame with the same `id`.
+
+Profiles from 3.0 are converted automatically.
 
 ---
 
@@ -200,196 +253,3 @@ Releases are built by GitHub Actions: bump `app/version.py`, push a tag `vX.Y.Z`
 
 ### 📜 License
 PNG Streamer is distributed under the **MIT License** — free for personal and commercial use, including streams and videos. Builds include Qt (PySide6) under the LGPLv3 and the Inter font under the SIL OFL 1.1; see [`licenses/`](licenses/THIRD_PARTY_NOTICES.md).
-
----
-
-## Русский
-
-**PNG Streamer** — настольное приложение для стримеров и контент-мейкеров. Оно в реальном времени переключает кадры вашего PNG-аватара (PNGTuber / VTuber-оверлея) в зависимости от громкости микрофона, заставляет его моргать и трястись и отдаёт прозрачный веб-виджет, который добавляется в OBS Studio как источник «Браузер».
-
-> [!NOTE]
-> Интерфейс доступен на русском и английском — язык определяется по системе и меняется в **Настройках**.
-
----
-
-### 🌟 Ключевые возможности
-
-*   🖥️ **Нативный интерфейс на Qt:** тёмная графитовая тема с лаймовым акцентом, одинаково работает на Windows и Linux (X11 и Wayland). Четыре раздела — **Запуск**, **Звук**, **Изображения**, **Настройки**.
-*   👀 **Живой предпросмотр:** ровно то, что покажет OBS, включая моргание и тряску. На индикаторе громкости миниатюры кадров стоят на своих порогах, текущий кадр подсвечен.
-*   🎤 **Мониторинг микрофона:** расчёт RMS-громкости в реальном времени, обновление 30 раз в секунду.
-*   🎧 **Профили звука:** аудиосистема, устройство, шумоподавление и компрессор сохраняются как переключаемые профили. Изменения активного профиля применяются сразу во время редактирования — настраивать можно на слух.
-*   🤫 **Два алгоритма шумоподавления:** адаптивный (подстраивается под фоновый шум) и фиксированный порог.
-*   🎚️ **Компрессор динамического диапазона:** сглаживает крик и смех, чтобы громкие пики не перескакивали через средние кадры.
-*   🎭 **Профили изображений:** любое число профилей и кадров, выбор картинок по миниатюрам, импорт перетаскиванием, явное сохранение с отслеживанием несохранённых изменений.
-*   🫨 **Тряска** для каждого кадра и 👁️ **случайное моргание** со своей картинкой закрытых глаз для каждого кадра.
-*   🌐 **OBS-виджет на FastAPI:** прозрачная HTML5-страница; если кадра нет, отдаётся прозрачный пиксель вместо битой картинки.
-*   📥 **Системный трей:** статус по значку (в эфире / остановлен / ошибка микрофона), запуск и остановка сервера, копирование адреса для OBS и смена профилей без открытия окна.
-*   🔄 **Автообновление** из GitHub Releases, которое никогда не трогает ваши профили и картинки.
-*   ⚙️ **Запуск вместе с системой** — при желании свёрнутым в трей и сразу с запущенным сервером для OBS.
-
----
-
-### 📦 Установка
-
-Скачайте последнюю версию со страницы [Releases](https://github.com/ENCIDI/PNG-Streamer/releases).
-
-#### 💻 Windows
-Запустите `PNGStreamer-Setup-X.Y.Z.exe`. Установщику не нужны права администратора: он предложит выбрать папку (по умолчанию `%LOCALAPPDATA%\Programs\PNGStreamer`) и создать ярлыки в меню «Пуск» и на рабочем столе.
-
-> [!NOTE]
-> Установщик пока не подписан цифровой подписью, поэтому Windows SmartScreen при первом запуске может предупредить о неизвестном издателе: нажмите **Подробнее → Выполнить в любом случае**.
-
-#### 🐧 Linux
-Скачайте `PNGStreamer-X.Y.Z-x86_64.AppImage`, сделайте файл исполняемым и запустите:
-```bash
-chmod +x PNGStreamer-*-x86_64.AppImage
-./PNGStreamer-*-x86_64.AppImage
-```
-При первом запуске программа предложит переместить себя в постоянную папку (по умолчанию `~/Applications/PNGStreamer`) и добавить себя в меню приложений и на рабочий стол. Можно выбрать **Запустить отсюда**.
-
-> [!TIP]
-> *   В **GNOME** для значка в трее нужно расширение [AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/) (в Ubuntu оно стоит по умолчанию). Если трея нет, закрытие окна завершает программу.
-> *   Если AppImage не запускается из-за отсутствия FUSE, установите `libfuse2` / `fuse` или запустите с ключом `--appimage-extract-and-run`.
-
-#### 🛠️ Из исходников (для разработки)
-Нужен Python 3.13+.
-```bash
-python -m venv .venv
-# Windows: .\.venv\Scripts\activate    Linux: source .venv/bin/activate
-pip install -r requirements-dev.txt
-python main.py
-```
-На Windows всё это автоматически делает `PNGStreamer.bat` (включая установку Python 3.13 через winget). На Linux предварительно установите `libportaudio2` из репозитория дистрибутива.
-
----
-
-### 🎬 Настройка в OBS Studio
-
-1. Откройте **Запуск**, выберите профиль звука и профиль изображений и нажмите **Запустить**.
-2. Нажмите **Копировать** рядом с адресом (по умолчанию `http://127.0.0.1:8642/widget`).
-3. В OBS Studio добавьте источник **«Браузер»** и вставьте адрес в поле URL.
-4. Задайте размер, например `600` × `600`. Фон прозрачный.
-
----
-
-### 🔄 Обновления и ваши данные
-
-*   Профили, картинки и логи хранятся в папке `data` **рядом с программой**. Обновления и переустановка её не трогают, а деинсталлятор спрашивает, прежде чем её удалить.
-*   Раз в сутки программа проверяет [Releases](https://github.com/ENCIDI/PNG-Streamer/releases) (отключается в **Настройках**) и показывает плашку, когда вышла новая версия. Скачанный файл проверяется по SHA-256, копия настроек сохраняется в `data/backups/`, и программа перезапускается уже в новой версии.
-*   Обновление предлагается только установленной программе, чья версия точно совпадает с опубликованным релизом. Запуск из исходников или сборка неопубликованной версии никогда не обновляются сами.
-
----
-
-### 📁 Структура папок
-
-```text
-PNGStreamer/
-├── PNGStreamer.exe / .AppImage    # Программа (main.py при запуске из исходников)
-└── data/                          # Ваши данные, сохраняются при обновлениях
-    ├── settings.json              # Общие настройки
-    ├── profiles.json              # Профили изображений (кадры, пороги, моргание, тряска)
-    ├── sound_profiles.json        # Профили звука (устройство, шумоподавление, компрессор)
-    ├── images/                    # Картинки аватара (*.png, *.jpg, *.gif, *.webp)
-    ├── logs/                      # app.log
-    └── backups/                   # Копии настроек перед обновлениями
-```
-
-Устройство репозитория: `app/ui` — интерфейс на Qt, `app/modules` — звук, хранилище, веб-сервер, обновления и автозапуск, `app/defaults` — пример профиля, который копируется в `data` при первом запуске, `packaging` — файлы сборки PyInstaller, Inno Setup и AppImage, `tests` — тесты pytest.
-
----
-
-### ⚙️ Схема файлов конфигурации
-
-Всё настраивается в программе, но файлы в `data/` — обычный JSON. Недостающие поля заполняются значениями по умолчанию автоматически.
-
-#### 1. Системные настройки (`settings.json`)
-```json
-{
-  "schema-version": 1,
-  "settings": {
-    "active-image-profile-id": 1,
-    "active-sound-profile-id": 1,
-    "server-port": 8642,
-    "language": "ru",
-    "minimize-to-tray-on-close": true,
-    "start-minimized": false,
-    "start-server-on-launch": false,
-    "check-updates": true
-  }
-}
-```
-- `schema-version` — версия формата данных, по ней файлы мигрируют после обновлений.
-- `active-image-profile-id` / `active-sound-profile-id` — активные профили.
-- `server-port` — порт сервера OBS-виджета.
-- `language` — `"ru"` или `"en"`.
-- `minimize-to-tray-on-close`, `start-minimized`, `start-server-on-launch`, `check-updates` — переключатели из **Настроек**.
-- Также программа хранит здесь размер окна и служебные данные проверки обновлений.
-
-#### 2. Профили звука (`sound_profiles.json`)
-```json
-{
-  "sound-profiles": [
-    {
-      "id": 1,
-      "name": "default",
-      "host-api": null,
-      "microphone": null,
-      "microphone-name": "Default",
-      "unnoised": false,
-      "noise-algorithm": "adaptive",
-      "noise-threshold": 15.0,
-      "compressor-enabled": false,
-      "compressor-threshold": 60.0,
-      "compressor-ratio": 4.0,
-      "effects": []
-    }
-  ]
-}
-```
-- `host-api` — индекс аудиосистемы в PortAudio, `null` — автоматически.
-- `microphone` / `microphone-name` — ID устройства и его имя (имя используется, если ID изменился, например после переподключения USB-микрофона).
-- `unnoised`, `noise-algorithm` (`"adaptive"` / `"fixed"`), `noise-threshold` (0–100) — шумоподавление.
-- `compressor-enabled`, `compressor-threshold` (0–100), `compressor-ratio` (1–20) — компрессор.
-
-#### 3. Профили изображений (`profiles.json`)
-```json
-{
-  "profiles": [
-    {
-      "id": 1,
-      "name": "sample",
-      "images": [
-        { "id": 0, "path-to-image": "image3.png", "volume-level": 0, "shake-level": 0 },
-        { "id": 1, "path-to-image": "image2.png", "volume-level": 30, "shake-level": 1 },
-        { "id": 2, "path-to-image": "image2.png", "volume-level": 80, "shake-level": 99 }
-      ],
-      "blink": { "interval-min-ms": 2000, "interval-max-ms": 5000, "duration-ms": 100 },
-      "blink-images": [
-        { "id": 0, "path-to-image": "image0.png" },
-        { "id": 1, "path-to-image": "image1.png" }
-      ]
-    }
-  ]
-}
-```
-- `images[].path-to-image` — имя файла в `data/images` (или абсолютный путь); кадр показывается при громкости `>= volume-level`.
-- `images[].shake-level` — амплитуда тряски в OBS-виджете (0 — без тряски).
-- `blink` — интервал между морганиями и длительность моргания, в миллисекундах.
-- `blink-images` — картинка закрытых глаз для кадра с тем же `id`.
-
----
-
-### 🧑‍💻 Разработка
-
-```bash
-python -m pytest            # тесты (Qt работает без окна)
-pip install pyinstaller
-pyinstaller --noconfirm packaging/pngstreamer.spec   # dist/PNGStreamer
-dist/PNGStreamer/PNGStreamer --self-test             # быстрая проверка сборки
-```
-Релизы собирает GitHub Actions: поднимите версию в `app/version.py`, отправьте тег `vX.Y.Z` с той же версией — workflow соберёт установщик для Windows и AppImage для Linux и создаст **черновик** релиза с `SHA256SUMS`. Пользователи получат обновление только после публикации черновика.
-
----
-
-### 📜 Лицензия
-PNG Streamer распространяется по лицензии **MIT** — свободно для личного и коммерческого использования, включая трансляции и видео. Сборки содержат Qt (PySide6) по лицензии LGPLv3 и шрифт Inter по лицензии SIL OFL 1.1; подробности в [`licenses/`](licenses/THIRD_PARTY_NOTICES.md).

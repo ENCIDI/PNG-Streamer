@@ -2,15 +2,29 @@ from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QGuiApplication
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
+from app import features
 from app.modules import audio_manager as am, logic_manager as lm
+from app.modules.studio_bridge import bound_params
 from app.ui import i18n, icons, pixmaps, theme
 from app.ui.screens.base import Screen
 from app.ui.state import AppState
 from app.ui.widgets.common import Card, Combo, StatusPill, chip, clear_layout, muted, number_field
 from app.ui.widgets.meter import LevelMeter
 from app.ui.widgets.stage import AvatarStage
+
+
+def _live_view() -> QWidget:
+    """The running Studio avatar; an empty widget when the Studio is not here
+    (advanced profiles then play as simple ones and this is never shown)."""
+    if not features.STUDIO:
+        widget = QWidget()
+        widget.tick = lambda: None
+        return widget
+    from app.ui.studio.render import LiveAvatarView
+
+    return LiveAvatarView()
 
 
 def sound_chips(profile: Optional[Dict[str, Any]]) -> list:
@@ -31,6 +45,10 @@ def sound_chips(profile: Optional[Dict[str, Any]]) -> list:
 def image_chips(profile: Optional[Dict[str, Any]]) -> list:
     if not profile:
         return []
+    if lm.is_advanced(profile):  # only true when the Studio is here
+        from app.ui.studio.profile_page import scene_chips
+
+        return scene_chips(profile)
     chips = [i18n.t("chip.frames", count=len(lm.sorted_frames(profile)))]
     min_ms, max_ms, duration_ms = lm.blink_settings(profile)
     if min_ms and max_ms and duration_ms and profile.get("blink-images"):
@@ -41,7 +59,7 @@ def image_chips(profile: Optional[Dict[str, Any]]) -> list:
 
 
 def frame_thumbnails(profile: Optional[Dict[str, Any]]) -> list:
-    if not profile:
+    if not profile or lm.is_advanced(profile):
         return []
     return [
         (int(frame.get("volume-level", 0)), pixmaps.load(lm.resolve_image_path(frame.get("path-to-image", "")), 96))
@@ -49,15 +67,10 @@ def frame_thumbnails(profile: Optional[Dict[str, Any]]) -> list:
     ]
 
 
-def frame_caption(profile: Optional[Dict[str, Any]], volume: float) -> str:
-    if not profile:
+def frame_caption(state: Dict[str, Any]) -> str:
+    if state.get("frame") is None:
         return ""
-    frame = lm.pick_frame(profile, volume)
-    if frame is None:
-        return ""
-    frames = lm.sorted_frames(profile)
-    index = next((i for i, f in enumerate(frames) if f is frame or f == frame), 0)
-    return i18n.t("preview.frame", index=index + 1, level=frame.get("volume-level", 0))
+    return i18n.t("preview.frame", index=state["frame"] + 1, level=state.get("level", 0))
 
 
 def mic_error_text(error: Optional[str]) -> str:
@@ -84,7 +97,19 @@ class LaunchScreen(Screen):
 
         self.preview_card = Card()
         self.stage = AvatarStage()
-        self.preview_card.body.addWidget(self.stage, 1)
+        self.live_view = _live_view()
+        self.previews = QStackedWidget()
+        self.previews.addWidget(self.stage)
+        self.previews.addWidget(self.live_view)
+        self.preview_card.body.addWidget(self.previews, 1)
+        # Buttons for Studio parameters marked "show on Launch" (triggers, toggles).
+        self.params_row = QHBoxLayout()
+        self.params_row.setSpacing(6)
+        params_holder = QHBoxLayout()
+        params_holder.addLayout(self.params_row)
+        params_holder.addStretch()
+        self.preview_card.body.addLayout(params_holder)
+        self.param_buttons: list = []
 
         self.mic_card = Card()
         value_row = QHBoxLayout()
@@ -169,6 +194,7 @@ class LaunchScreen(Screen):
         state.profiles_changed.connect(self._refresh_profiles)
         state.images_changed.connect(self._refresh_profiles)
         state.microphone_changed.connect(self._refresh_mic)
+        state.avatar_changed.connect(self._refresh_param_buttons)
         self.retranslate()
 
     def retranslate(self) -> None:
@@ -197,6 +223,8 @@ class LaunchScreen(Screen):
         self.port.setEnabled(not running)
         self.url.setText(self.state.widget_url() if running else "")
         self.url.setPlaceholderText(i18n.t("launch.url_stopped"))
+        # The address is code-like; the hint while stopped is a normal sentence.
+        self.url.setFont(theme.mono_font() if running else theme.font())
         self.copy_button.setEnabled(running)
 
     def _refresh_profiles(self) -> None:
@@ -217,8 +245,37 @@ class LaunchScreen(Screen):
         for text in image_chips(self._image_profile):
             self.image_chips.addWidget(chip(text))
         self.image_chips.addStretch()
+        advanced = lm.is_advanced(self._image_profile)
+        self.previews.setCurrentWidget(self.live_view if advanced else self.stage)
         self.meter.set_frames(frame_thumbnails(self._image_profile))
+        self._build_param_buttons()
         self._refresh_mic()
+
+    def _build_param_buttons(self) -> None:
+        clear_layout(self.params_row)
+        self.param_buttons = []
+        if not lm.is_advanced(self._image_profile):
+            return
+        for param in bound_params(self._image_profile):
+            if not param.get("show_in_launch") or param["type"] == "number":
+                continue
+            button = QPushButton(param.get("name") or param["id"])
+            button.setCursor(Qt.PointingHandCursor)
+            button.setCheckable(param["type"] == "bool")
+            if param.get("hotkey"):
+                button.setToolTip(param["hotkey"])
+            button.clicked.connect(lambda _=False, pid=param["id"]: self.state.fire_param(pid))
+            self.params_row.addWidget(button)
+            self.param_buttons.append((param["id"], button))
+        self._refresh_param_buttons()
+
+    def _refresh_param_buttons(self) -> None:
+        values = {p["id"]: p.get("value") for p in self.state.avatar_params()}
+        for pid, button in self.param_buttons:
+            if button.isCheckable():
+                button.blockSignals(True)
+                button.setChecked(bool(values.get(pid)))
+                button.blockSignals(False)
 
     def _refresh_mic(self) -> None:
         sound = self.state.active_sound_profile() or {}
@@ -237,14 +294,20 @@ class LaunchScreen(Screen):
             return
         self.value.setText(str(int(volume)))
         self.meter.set_level(volume)
-        path, shake = lm.get_current_image_state(volume)
+        if lm.is_advanced(self._image_profile):
+            return
+        state = lm.compute_state(volume, self._image_profile)
         self.stage.set_frame(
-            path, shake, frame_caption(self._image_profile, volume), i18n.t("preview.empty")
+            lm.resolve_image_path(state["image"] or ""),
+            state["shake"],
+            frame_caption(state),
+            i18n.t("preview.empty"),
         )
 
     def tick(self, dt: float) -> None:
         self.pill.tick(dt)
         self.stage.tick(dt)
+        self.live_view.tick()
 
     def _toggle_server(self) -> None:
         if self.state.server_running():

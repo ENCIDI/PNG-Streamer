@@ -47,6 +47,10 @@ excludes = [
     "PySide6.QtPrintSupport",
     "PySide6.QtSvgWidgets",
     "PySide6.QtLabsStyleKit",
+    # The Studio is developed locally and not released yet (see app/features.py).
+    "app.studio",
+    "app.ui.studio",
+    "app.ui.i18n_studio",
 ]
 
 a = Analysis(
@@ -54,7 +58,7 @@ a = Analysis(
     pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
-    hiddenimports=collect_submodules("uvicorn"),
+    hiddenimports=collect_submodules("uvicorn") + collect_submodules("websockets"),
     excludes=excludes,
     noarchive=False,
 )

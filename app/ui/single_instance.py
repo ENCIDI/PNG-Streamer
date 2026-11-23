@@ -10,6 +10,7 @@ from app.modules import logging_manager as logm
 _LOGGER = logm.get_logger(__name__)
 
 _SHOW = b"show"
+_OPEN = b"open:"
 _TIMEOUT_MS = 500
 # Also checked by the Windows installer (AppMutex) to ask the user to close the app.
 WINDOWS_MUTEX = "PNGStreamerMutex"
@@ -27,6 +28,7 @@ class SingleInstance(QObject):
     """Second launches hand over to the running instance, which shows its window."""
 
     show_requested = Signal()
+    open_requested = Signal(str)  # a file (avatar pack) passed to a second launch
 
     def __init__(self):
         super().__init__()
@@ -34,11 +36,11 @@ class SingleInstance(QObject):
         self._server: QLocalServer | None = None
         self._mutex = None
 
-    def acquire(self) -> bool:
+    def acquire(self, open_path: str = "") -> bool:
         socket = QLocalSocket()
         socket.connectToServer(self._name)
         if socket.waitForConnected(_TIMEOUT_MS):
-            socket.write(_SHOW)
+            socket.write(_OPEN + open_path.encode("utf-8") if open_path else _SHOW)
             socket.flush()
             socket.waitForBytesWritten(_TIMEOUT_MS)
             socket.disconnectFromServer()
@@ -70,6 +72,9 @@ class SingleInstance(QObject):
         while self._server is not None and self._server.hasPendingConnections():
             socket = self._server.nextPendingConnection()
             socket.waitForReadyRead(_TIMEOUT_MS)
-            if socket.readAll().data().startswith(_SHOW):
+            data = socket.readAll().data()
+            if data.startswith(_OPEN):
+                self.open_requested.emit(data[len(_OPEN):].decode("utf-8", "replace"))
+            elif data.startswith(_SHOW):
                 self.show_requested.emit()
             socket.deleteLater()

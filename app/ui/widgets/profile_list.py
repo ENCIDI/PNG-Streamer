@@ -90,23 +90,34 @@ class ProfileList(QWidget):
     rename_requested = Signal(int)
     duplicate_requested = Signal(int)
     delete_requested = Signal(int)
+    import_requested = Signal()
+    export_requested = Signal(int)
 
-    def __init__(self):
+    def __init__(self, packs: bool = False):
         super().__init__()
+        self._packs = packs
         self.setFixedWidth(240)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
         head = QHBoxLayout()
         self.title = eyebrow()
-        head.addWidget(self.title)
-        head.addStretch()
+        self.title.setWordWrap(True)  # long names in some languages take two lines
+        head.addWidget(self.title, 1)
         self.create_button = QPushButton()
         self.create_button.setObjectName("flat")
         self.create_button.setFixedSize(QSize(30, 30))
         self.create_button.setIcon(icons.icon("plus", theme.TEXT))
         self.create_button.setCursor(Qt.PointingHandCursor)
         self.create_button.clicked.connect(self.create_requested)
+        self.import_button = QPushButton()
+        self.import_button.setObjectName("flat")
+        self.import_button.setFixedSize(QSize(30, 30))
+        self.import_button.setIcon(icons.icon("download", theme.TEXT))
+        self.import_button.setCursor(Qt.PointingHandCursor)
+        self.import_button.clicked.connect(self.import_requested)
+        self.import_button.setVisible(packs)
+        head.addWidget(self.import_button)
         head.addWidget(self.create_button)
         layout.addLayout(head)
 
@@ -124,6 +135,7 @@ class ProfileList(QWidget):
     def set_title(self, title: str) -> None:
         self.title.setText(title)
         self.create_button.setToolTip(i18n.t("profiles.create"))
+        self.import_button.setToolTip(i18n.t("packs.import"))
 
     def set_profiles(
         self,
@@ -159,6 +171,10 @@ class ProfileList(QWidget):
         menu.addAction(icons.icon("duplicate", theme.TEXT), i18n.t("profiles.duplicate")).triggered.connect(
             lambda: self.duplicate_requested.emit(profile_id)
         )
+        if self._packs:
+            menu.addAction(icons.icon("upload", theme.TEXT), i18n.t("packs.export")).triggered.connect(
+                lambda: self.export_requested.emit(profile_id)
+            )
         menu.addSeparator()
         delete = menu.addAction(icons.icon("trash", theme.DANGER), i18n.t("profiles.delete"))
         delete.setEnabled(can_delete)

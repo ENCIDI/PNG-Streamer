@@ -12,15 +12,20 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
+    QStackedWidget,
     QVBoxLayout,
+    QWidget,
 )
 
-from app import paths
-from app.modules import logic_manager as lm, storage_manager as sm
+from app import features, paths
+from app.modules import avatar_pack, logic_manager as lm, storage_manager as sm
 from app.ui import i18n, icons, pixmaps, theme
+from app.ui.calibration_panel import CalibrationDialog, apply_gate
 from app.ui.screens.base import ProfileScreen
 from app.ui.state import AppState
+from app.ui.screens.profile_panels import OutputCard
 from app.ui.widgets.common import Card, LabeledSlider, clear_layout, muted, number_field
 from app.ui.widgets.image_picker import ImagePicker
 from app.ui.widgets.meter import LevelMeter
@@ -88,15 +93,103 @@ class _FrameRow(QFrame):
         self.blink.retranslate()
 
 
-class ImagesScreen(ProfileScreen):
-    def __init__(self, state: AppState):
-        super().__init__(state)
+class _NoAdvanced:
+    """Stand-in for the Studio's advanced profile page when the Studio is not here."""
+
+    def _build_advanced(self) -> None:
+        pass
+
+    def _mode_hint(self) -> str:
+        return i18n.t("mode.simple_hint")
+
+    def _refresh_studio_card(self) -> None:
+        pass
+
+    def _prepare_advanced(self, profile: Dict[str, Any]) -> bool:
+        return False
+
+    def _advanced_bindings(self) -> Dict[str, Any]:
+        return self._bindings
+
+    def _scene_preview(self):
+        return None
+
+    def _tick_advanced(self) -> None:
+        pass
+
+    def _retranslate_advanced(self) -> None:
+        pass
+
+
+if features.STUDIO:
+    from app.ui.studio.profile_page import AdvancedMixin
+else:
+    AdvancedMixin = _NoAdvanced
+
+
+class ImagesScreen(AdvancedMixin, ProfileScreen):
+    """Simple profiles: frames by volume, blinking, shake (as before 3.1).
+    Advanced profiles: a scene from the Studio plus how its inputs are driven.
+    Both: where the avatar stands in OBS."""
+
+    def __init__(self, state: AppState, hotkey_manager=None):
+        super().__init__(state, packs=True)
+        self.hotkey_manager = hotkey_manager
         self._rows: List[_FrameRow] = []
+        self._mode = "simple"
+        self._avatar: Optional[str] = None
+        self._bindings: Dict[str, Any] = {}
         self._next_blink = 0.0
         self._blink_until = 0.0
         self.setAcceptDrops(True)
 
-        # preview
+        # mode switch
+        mode_row = QHBoxLayout()
+        mode_row.setSpacing(12)
+        self.mode_frame = QFrame()
+        self.mode_frame.setObjectName("segmented")
+        mode_layout = QHBoxLayout(self.mode_frame)
+        mode_layout.setContentsMargins(3, 3, 3, 3)
+        mode_layout.setSpacing(2)
+        self.mode_buttons: Dict[str, QPushButton] = {}
+        for mode in sm.IMAGE_PROFILE_MODES:
+            button = QPushButton()
+            button.setObjectName("segment")
+            button.setCheckable(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.clicked.connect(lambda _=False, m=mode: self._switch_mode(m))
+            mode_layout.addWidget(button)
+            self.mode_buttons[mode] = button
+        mode_row.addWidget(self.mode_frame)
+        self.mode_hint = muted("", "faint", wrap=True)
+        mode_row.addWidget(self.mode_hint, 1)
+        self.editor_layout.addLayout(mode_row)
+
+        self.pages = QStackedWidget()
+        self.editor_layout.addWidget(self.pages)
+        self.simple_page = QWidget()
+        self.simple_layout = QVBoxLayout(self.simple_page)
+        self.simple_layout.setContentsMargins(0, 0, 0, 0)
+        self.simple_layout.setSpacing(16)
+        self.pages.addWidget(self.simple_page)
+        self._build_simple()
+        self.advanced_page = QWidget()
+        self._build_advanced()
+        self.pages.addWidget(self.advanced_page)
+        self.output_card = OutputCard()
+        self.output_card.changed.connect(self._changed)
+        self.editor_layout.addWidget(self.output_card)
+        self.editor_layout.addStretch()
+
+        self.profile_list.import_requested.connect(self.import_pack_dialog)
+        self.profile_list.export_requested.connect(self.export_pack)
+        state.volume_changed.connect(self._on_volume)
+        state.images_changed.connect(self._refresh_pickers)
+        self.retranslate()
+        self.reload()
+
+    # --- simple mode UI ------------------------------------------------------------
+    def _build_simple(self) -> None:
         self.preview_card = Card()
         preview = QHBoxLayout()
         preview.setSpacing(18)
@@ -110,12 +203,19 @@ class ImagesScreen(ProfileScreen):
         right.addWidget(self.meter)
         self.frames_hint = muted("", "faint", wrap=True)
         right.addWidget(self.frames_hint)
+        calibrate_row = QHBoxLayout()
+        self.calibrate_button = QPushButton()
+        self.calibrate_button.setIcon(icons.icon("mic", theme.TEXT))
+        self.calibrate_button.setCursor(Qt.PointingHandCursor)
+        self.calibrate_button.clicked.connect(self._calibrate)
+        calibrate_row.addWidget(self.calibrate_button)
+        calibrate_row.addStretch()
+        right.addLayout(calibrate_row)
         right.addStretch()
         preview.addLayout(right, 1)
         self.preview_card.body.addLayout(preview)
-        self.editor_layout.addWidget(self.preview_card)
+        self.simple_layout.addWidget(self.preview_card)
 
-        # frames
         self.frames_card = Card()
         self.import_button = QPushButton()
         self.import_button.setIcon(icons.icon("upload", theme.TEXT))
@@ -143,9 +243,8 @@ class ImagesScreen(ProfileScreen):
         self.frames_card.body.addWidget(self.add_button, 0, Qt.AlignLeft)
         self.drop_hint = muted("", "faint")
         self.frames_card.body.addWidget(self.drop_hint)
-        self.editor_layout.addWidget(self.frames_card)
+        self.simple_layout.addWidget(self.frames_card)
 
-        # blink
         self.blink_card = Card()
         self.blink_hint = muted("", "faint", wrap=True)
         self.blink_card.body.addWidget(self.blink_hint)
@@ -161,13 +260,7 @@ class ImagesScreen(ProfileScreen):
             blink_grid.addWidget(field, 1, column)
             field.valueChanged.connect(self._changed)
         self.blink_card.body.addLayout(blink_grid)
-        self.editor_layout.addWidget(self.blink_card)
-        self.editor_layout.addStretch()
-
-        state.volume_changed.connect(self._on_volume)
-        state.images_changed.connect(self._refresh_pickers)
-        self.retranslate()
-        self.reload()
+        self.simple_layout.addWidget(self.blink_card)
 
     @staticmethod
     def _ms_field() -> QSpinBox:
@@ -178,10 +271,10 @@ class ImagesScreen(ProfileScreen):
         return sm.list_profiles()
 
     def store_profile(self, profile: Dict[str, Any]) -> None:
-        sm.update_profile(profile)
+        sm.update_profile(sm.normalize_image_profile(profile))
 
     def remove_profile(self, profile_id: int) -> None:
-        sm.delete_profile(profile_id)
+        sm.delete_profile(profile_id)  # scenes stay in the Studio's library
 
     def active_id(self) -> Optional[int]:
         return self.state.active_image_profile_id()
@@ -193,12 +286,18 @@ class ImagesScreen(ProfileScreen):
         images = lm.list_available_images()
         first = images[0] if images else ""
         return {
+            "mode": "simple",
             "images": [{"id": 0, "path-to-image": first, "volume-level": 0, "shake-level": 0}] if first else [],
-            "blink": dict(sm.IMAGE_PROFILE_TEMPLATE["blink"]),
+            "blink": dict(sm.SIMPLE_PROFILE_TEMPLATE["blink"]),
             "blink-images": [],
         }
 
     def load_editor(self, profile: Dict[str, Any]) -> None:
+        profile = sm.normalize_image_profile(profile)
+        # Without the Studio an advanced profile is edited (and saved) as a simple one;
+        # its scene and bindings are kept.
+        self._mode = profile["mode"] if features.STUDIO else "simple"
+        self._avatar = profile.get("avatar") or None
         for row in self._rows:
             row.deleteLater()
         self._rows = []
@@ -218,7 +317,10 @@ class ImagesScreen(ProfileScreen):
         self.blink_min.setValue(min_ms)
         self.blink_max.setValue(max_ms)
         self.blink_duration.setValue(duration_ms)
+        self._bindings = dict(profile.get("bindings") or {})
+        self.output_card.set_value(profile.get("output"))
         self._renumber()
+        self._apply_mode()
 
     def editor_data(self) -> Dict[str, Any]:
         images, blink_images = [], []
@@ -235,7 +337,8 @@ class ImagesScreen(ProfileScreen):
             )
             if row.blink.value():
                 blink_images.append({"id": index, "path-to-image": row.blink.value()})
-        return {
+        data = {
+            "mode": self._mode,
             "images": images,
             "blink-images": blink_images,
             "blink": {
@@ -244,6 +347,61 @@ class ImagesScreen(ProfileScreen):
                 "duration-ms": self.blink_duration.value(),
             },
         }
+        if self._avatar:
+            data["avatar"] = self._avatar
+        data["bindings"] = self._advanced_bindings()
+        data["output"] = self.output_card.value()
+        return data
+
+    def on_saved(self, profile: Dict[str, Any]) -> None:
+        if self.hotkey_manager is not None:
+            self.hotkey_manager.reload()
+
+    # --- modes ---------------------------------------------------------------------
+    def _apply_mode(self) -> None:
+        advanced = self._mode == "advanced"
+        for mode, button in self.mode_buttons.items():
+            button.setChecked(mode == self._mode)
+        self.mode_hint.setText(self._mode_hint())
+        self.mode_frame.setVisible(features.STUDIO)
+        self.mode_hint.setVisible(features.STUDIO)
+        current = self.advanced_page if advanced else self.simple_page
+        for page in (self.simple_page, self.advanced_page):
+            # A stacked widget is as tall as its tallest page unless hidden pages are ignored.
+            policy = QSizePolicy.Preferred if page is current else QSizePolicy.Ignored
+            page.setSizePolicy(QSizePolicy.Preferred, policy)
+        self.pages.setCurrentWidget(current)
+        if advanced:
+            self._refresh_studio_card()
+        self._refresh_output_preview()
+        self.pages.adjustSize()
+
+    def _refresh_output_preview(self) -> None:
+        if self._mode == "advanced":
+            self.output_card.preview.set_content(self._scene_preview())
+            return
+        first = next((row.image.value() for row in self._rows if row.image.value()), None)
+        self.output_card.preview.set_content(pixmaps.load(lm.resolve_image_path(first), 480) if first else None)
+
+    def _switch_mode(self, mode: str) -> None:
+        if mode == self._mode:
+            self._apply_mode()
+            return
+        if not self.can_leave():
+            self._apply_mode()
+            return
+        profile = self.selected_profile()
+        if profile is None:
+            return
+        if mode == "advanced" and not self._prepare_advanced(profile):
+            self._apply_mode()
+            return
+        profile["mode"] = mode
+        self.store_profile(profile)
+        self._select(profile["id"])
+        self.state.profiles_changed.emit()
+        if self.hotkey_manager is not None:
+            self.hotkey_manager.reload()
 
     # --- frames --------------------------------------------------------------
     def _create_row(self) -> _FrameRow:
@@ -282,6 +440,8 @@ class ImagesScreen(ProfileScreen):
         if self._loading:
             return
         self._refresh_meter()
+        if self._mode == "simple":
+            self._refresh_output_preview()
         self.mark_changed()
 
     def _refresh_meter(self) -> None:
@@ -303,9 +463,22 @@ class ImagesScreen(ProfileScreen):
             row.blink.update()
         self._refresh_meter()
 
+    def _calibrate(self) -> None:
+        rows = [row for row in self._rows if row.image.value()]
+        dialog = CalibrationDialog(self.window(), self.state, len(rows))
+        if dialog.exec() != CalibrationDialog.Accepted or dialog.panel.result is None:
+            return
+        result = dialog.panel.result
+        apply_gate(result)
+        for row, threshold in zip(rows, result.thresholds):
+            row.threshold.setValue(threshold)
+        self._changed()
+        self.state.profiles_changed.emit()
+        self.state.notify.emit(i18n.t("calibration.applied", gate=result.gate), "info")
+
     # --- preview -------------------------------------------------------------
     def _on_volume(self, volume: float) -> None:
-        if not self.isVisible():
+        if not self.isVisible() or self._mode != "simple":
             return
         self.meter.set_level(volume)
         profile = self.editor_data()
@@ -335,9 +508,12 @@ class ImagesScreen(ProfileScreen):
         return False
 
     def tick(self, dt: float) -> None:
-        self.stage.tick(dt)
+        if self._mode == "advanced":
+            self._tick_advanced()
+        else:
+            self.stage.tick(dt)
 
-    # --- import --------------------------------------------------------------
+    # --- import / export -----------------------------------------------------
     def import_dialog(self) -> List[str]:
         files, _ = QFileDialog.getOpenFileNames(self.window(), i18n.t("images.import"), "", i18n.t("images.import_filter"))
         return self.import_files([Path(f) for f in files])
@@ -349,21 +525,69 @@ class ImagesScreen(ProfileScreen):
             self.state.images_changed.emit()
         return imported
 
+    def import_pack_dialog(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self.window(), i18n.t("packs.import"), "", i18n.t("packs.filter"))
+        if path:
+            self.import_pack(Path(path))
+
+    def import_pack(self, path: Path) -> None:
+        if not self.can_leave():
+            return
+        try:
+            profile = avatar_pack.import_pack(path)
+        except avatar_pack.PackError as error:
+            self.state.notify.emit(i18n.t("packs.import_failed", error=error), "error")
+            return
+        self.state.images_changed.emit()
+        self._select(profile["id"])
+        self.state.profiles_changed.emit()
+        self.state.notify.emit(i18n.t("packs.imported", name=profile["name"]), "info")
+
+    def export_pack(self, profile_id: int) -> None:
+        if profile_id == self._selected_id and not self.can_leave():
+            return
+        profile = self.profile_by_id(profile_id)
+        if profile is None:
+            return
+        target, _ = QFileDialog.getSaveFileName(
+            self.window(),
+            i18n.t("packs.export"),
+            str(Path.home() / f"{profile.get('name', 'avatar')}{avatar_pack.EXTENSION}"),
+            i18n.t("packs.filter"),
+        )
+        if not target:
+            return
+        try:
+            saved = avatar_pack.export_pack(profile, Path(target))
+        except (avatar_pack.PackError, OSError) as error:
+            self.state.notify.emit(i18n.t("packs.export_failed", error=error), "error")
+            return
+        self.state.notify.emit(i18n.t("packs.exported", name=saved.name), "info")
+
     def dragEnterEvent(self, event) -> None:
         urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
-        if any(Path(u.toLocalFile()).suffix.lower() in lm.IMAGE_SUFFIXES for u in urls if u.isLocalFile()):
+        suffixes = lm.IMAGE_SUFFIXES | set(avatar_pack.OPEN_EXTENSIONS)
+        if any(Path(u.toLocalFile()).suffix.lower() in suffixes for u in urls if u.isLocalFile()):
             event.acceptProposedAction()
 
     def dropEvent(self, event) -> None:
         files = [Path(u.toLocalFile()) for u in event.mimeData().urls() if u.isLocalFile()]
-        self.import_files(files)
+        packs = [f for f in files if f.suffix.lower() in avatar_pack.OPEN_EXTENSIONS]
+        for pack in packs:
+            self.import_pack(pack)
+        images = [f for f in files if f not in packs]
+        if images:
+            self.import_files(images)
         event.acceptProposedAction()
 
     def retranslate(self) -> None:
         self.header.set_text(i18n.t("images.title"), i18n.t("images.subtitle"))
+        self.mode_buttons["simple"].setText(i18n.t("mode.simple"))
+        self.mode_hint.setText(self._mode_hint())
         self.profile_list.set_title(i18n.t("images.profiles"))
         self.preview_card.set_title(i18n.t("images.preview"), i18n.t("images.preview_hint"))
         self.frames_hint.setText(i18n.t("images.frames_hint"))
+        self.calibrate_button.setText(" " + i18n.t("calibration.button"))
         self.frames_card.set_title(i18n.t("images.frames"))
         self.import_button.setText(" " + i18n.t("images.import"))
         self.folder_button.setToolTip(i18n.t("images.open_folder"))
@@ -374,6 +598,8 @@ class ImagesScreen(ProfileScreen):
         self.blink_hint.setText(i18n.t("images.blink_hint"))
         for label, key in zip(self.blink_labels, ("images.blink_min", "images.blink_max", "images.blink_duration")):
             label.setText(i18n.t(key))
+        self._retranslate_advanced()
+        self.output_card.retranslate()
         for row in self._rows:
             row.retranslate()
         self.retranslate_base()

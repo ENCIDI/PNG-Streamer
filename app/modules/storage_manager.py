@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from app import paths
+from app import features, paths
 from app.modules import logging_manager as logm
 
 
@@ -24,8 +24,7 @@ _CACHE: Dict[Path, Tuple[Tuple[int, int], Any]] = {}
 
 # Bump together with a new entry in _MIGRATIONS when the data format changes.
 # Each migration upgrades the files in DATA_DIR from version (key - 1) to key.
-SCHEMA_VERSION = 1
-_MIGRATIONS: Dict[int, Callable[[], None]] = {}
+SCHEMA_VERSION = 4
 
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
@@ -43,20 +42,33 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "skipped-version": "",
         "tray-hint-shown": False,
         "window-geometry": "",
+        "onboarding-done": False,
+        "lan-access": False,
+        "lan-token": "",
+        "twitch-channel": "",
+        "chat-enabled": False,
+        "chat-max": 12,
+        "chat-fade-seconds": 45,
+        "chat-font-size": 20,
+        "chat-bg-opacity": 72,
+        "chat-hide-commands": False,
+        "chat-7tv": True,
+        "chat-hidden-users": "nightbot, streamelements, moobot, fossabot, streamlabs",
+        "panel-layout": None,
+        "studio-last-scene": "",
+        "studio-page": "media",
+        "studio-layout": None,
+        "studio-tour-done": False,
     },
 }
 
-DEFAULT_PROFILES: Dict[str, Any] = {
-    "profiles": [
-        {
-            "id": 1,
-            "name": "default",
-            "images": [],
-        }
-    ]
-}
+# "simple" profiles work exactly like before 3.1: frames by volume, blinking
+# and shake. "advanced" profiles point to a Studio avatar project
+# (data/avatars/<avatar>/) with a rig, clips and state machines.
+IMAGE_PROFILE_MODES = ("simple", "advanced")
 
-IMAGE_PROFILE_TEMPLATE: Dict[str, Any] = {
+SIMPLE_PROFILE_TEMPLATE: Dict[str, Any] = {
+    "mode": "simple",
     "images": [],
     "blink": {
         "interval-min-ms": 2000,
@@ -64,7 +76,47 @@ IMAGE_PROFILE_TEMPLATE: Dict[str, Any] = {
         "duration-ms": 100,
     },
     "blink-images": [],
+    # Where the avatar sits in the OBS browser source (both modes), and for
+    # advanced profiles how the scene's inputs are driven.
+    "output": {"anchor": "bottom", "scale": 1.0, "x": 0.0, "y": 0.0, "flip": False},
+    "bindings": {},
 }
+
+DEFAULT_PROFILES: Dict[str, Any] = {
+    "profiles": [{"id": 1, "name": "default", **SIMPLE_PROFILE_TEMPLATE}],
+}
+
+
+def normalize_image_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """Bring an image profile of any format version to the current one.
+
+    Development builds of 3.1 stored frames inside "expressions"; the first
+    expression becomes the profile's frames again. An advanced profile without
+    an avatar project falls back to simple."""
+    profile = dict(profile)
+    expressions = profile.pop("expressions", None)
+    profile.pop("animation", None)
+    if isinstance(expressions, list) and expressions and isinstance(expressions[0], dict):
+        if not profile.get("images"):
+            profile["images"] = expressions[0].get("images", [])
+            profile["blink-images"] = expressions[0].get("blink-images", [])
+    # Frames are kept in advanced profiles too, so switching back loses nothing.
+    if profile.get("mode") != "advanced" or not profile.get("avatar"):
+        profile["mode"] = "simple"
+    result = _merge(SIMPLE_PROFILE_TEMPLATE, profile)
+    if result["mode"] == "simple" and not result.get("avatar"):
+        result.pop("avatar", None)
+    from app.modules.output import normalize_output
+
+    result["output"] = normalize_output(result.get("output"))
+    if features.STUDIO:
+        from app.studio.bindings import normalize_bindings
+
+        result["bindings"] = normalize_bindings(result.get("bindings"))
+    elif not isinstance(result.get("bindings"), dict):
+        result["bindings"] = {}
+    return result
+
 
 SOUND_PROFILE_TEMPLATE: Dict[str, Any] = {
     "host-api": None,
@@ -107,6 +159,17 @@ def _merge(defaults: Any, stored: Any) -> Any:
     return merged
 
 
+def _retry_locked(action: Callable[[], Any]) -> Any:
+    """On Windows a file being replaced by another thread (or scanned by an
+    antivirus) is briefly locked; try again before giving up."""
+    for delay in (0.01, 0.03, 0.1, 0.3):
+        try:
+            return action()
+        except PermissionError:
+            time.sleep(delay)
+    return action()
+
+
 def _read_json(path: Path) -> Optional[Any]:
     try:
         stat = path.stat()
@@ -117,10 +180,18 @@ def _read_json(path: Path) -> Optional[Any]:
     if cached is not None and cached[0] == signature:
         return copy.deepcopy(cached[1])
     try:
-        with path.open("r", encoding="utf-8") as json_file:
-            data = json.load(json_file)
+        data = _retry_locked(lambda: json.loads(path.read_text(encoding="utf-8")))
         _CACHE[path] = (signature, data)
         return copy.deepcopy(data)
+    except FileNotFoundError:
+        return None
+    except PermissionError:
+        # Still locked by another program (antivirus, sync client): the file is
+        # fine, so it is neither moved aside nor replaced with defaults.
+        if cached is None:
+            raise
+        _LOGGER.warning("%s is locked, using the last read copy", path)
+        return copy.deepcopy(cached[1])
     except (OSError, ValueError):
         _CACHE.pop(path, None)
         broken = path.with_name(f"{path.name}.broken-{time.strftime('%Y%m%d-%H%M%S')}")
@@ -139,7 +210,7 @@ def _write_json(path: Path, data: Any) -> None:
         json.dump(data, json_file, ensure_ascii=False, indent=2)
         json_file.flush()
         os.fsync(json_file.fileno())
-    os.replace(tmp_path, path)
+    _retry_locked(lambda: os.replace(tmp_path, path))
     _CACHE.pop(path, None)
 
 
@@ -181,7 +252,9 @@ def _migrate_legacy_files() -> None:
 def _seed_missing_files() -> None:
     if not _profiles_path().exists():
         seed = _read_json(paths.DEFAULTS_DIR / _PROFILES_FILE)
-        save_profiles(seed if seed is not None else copy.deepcopy(DEFAULT_PROFILES))
+        seed = seed if isinstance(seed, dict) else copy.deepcopy(DEFAULT_PROFILES)
+        seed["profiles"] = [normalize_image_profile(p) for p in seed.get("profiles", [])]
+        save_profiles(seed)
     if not _sound_profiles_path().exists():
         save_sound_profiles(_seed_default_sound_profiles())
 
@@ -247,6 +320,67 @@ def _next_id(items: List[Dict[str, Any]]) -> int:
     return max_id + 1
 
 
+def _migrate_to_2() -> None:
+    # People who already used the app do not need the first-run wizard.
+    settings = load_settings()
+    settings.setdefault("settings", {})["onboarding-done"] = True
+    save_settings(settings)
+
+
+def _migrate_to_3() -> None:
+    # Image profiles get a mode (see normalize_image_profile).
+    profiles = _read_json(_profiles_path())
+    if isinstance(profiles, dict):
+        profiles["profiles"] = [
+            normalize_image_profile(p) for p in profiles.get("profiles", []) if isinstance(p, dict)
+        ]
+        save_profiles(profiles)
+
+
+def _migrate_to_4() -> None:
+    # Bindings (sources, thresholds, hotkeys…) move from the scenes into the
+    # profiles that use them; the scenes keep only their inputs.
+    profiles = _read_json(_profiles_path())
+    if not features.STUDIO:  # no scenes to move bindings out of
+        if isinstance(profiles, dict):
+            profiles["profiles"] = [normalize_image_profile(p) for p in profiles.get("profiles", []) if isinstance(p, dict)]
+            save_profiles(profiles)
+        return
+    from app.studio import project as pj
+    from app.studio.bindings import extract_legacy
+
+    legacy: Dict[str, Dict[str, Any]] = {}
+    folder = pj.avatars_dir()
+    for scene in (folder.iterdir() if folder.exists() else []):
+        path = scene / "avatar.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        legacy[scene.name] = extract_legacy(raw.get("params") if isinstance(raw, dict) else [])
+        pj.save(scene.name, raw)
+    if isinstance(profiles, dict):
+        for profile in profiles.get("profiles", []):
+            if isinstance(profile, dict) and profile.get("avatar") in legacy:
+                profile["bindings"] = {**legacy[profile["avatar"]], **(profile.get("bindings") or {})}
+        profiles["profiles"] = [normalize_image_profile(p) for p in profiles.get("profiles", []) if isinstance(p, dict)]
+        save_profiles(profiles)
+
+
+_MIGRATIONS: Dict[int, Callable[[], None]] = {2: _migrate_to_2, 3: _migrate_to_3, 4: _migrate_to_4}
+
+
+def data_revision() -> Tuple[int, int]:
+    """Changes whenever settings or image profiles are saved."""
+    revision = []
+    for path in (_settings_path(), _profiles_path()):
+        try:
+            revision.append(path.stat().st_mtime_ns)
+        except OSError:
+            revision.append(0)
+    return tuple(revision)
+
+
 def _with_template(items: Any, template: Dict[str, Any]) -> List[Dict[str, Any]]:
     if not isinstance(items, list):
         return []
@@ -257,7 +391,9 @@ def load_profiles() -> Dict[str, Any]:
     stored = _read_json(_profiles_path())
     if not isinstance(stored, dict):
         return copy.deepcopy(DEFAULT_PROFILES)
-    stored["profiles"] = _with_template(stored.get("profiles"), IMAGE_PROFILE_TEMPLATE)
+    stored["profiles"] = [
+        normalize_image_profile(p) for p in stored.get("profiles", []) or [] if isinstance(p, dict)
+    ]
     return stored
 
 
@@ -277,21 +413,15 @@ def get_profile_by_id(profile_id: int) -> Optional[Dict[str, Any]]:
     return None
 
 
-def create_profile(
-    name: str,
-    images: List[Dict[str, Any]],
-    blink: Optional[Dict[str, Any]] = None,
-    blink_images: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+def next_profile_id() -> int:
+    return _next_id(load_profiles().get("profiles", []))
+
+
+def create_profile(name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Add an image profile built from `data` (frames and blink, or an avatar project)."""
     profiles_data = load_profiles()
     profiles = profiles_data.setdefault("profiles", [])
-    new_profile = {
-        "id": _next_id(profiles),
-        "name": name,
-        "images": images,
-        "blink": blink or {},
-        "blink-images": blink_images or [],
-    }
+    new_profile = normalize_image_profile({**data, "id": _next_id(profiles), "name": name})
     profiles.append(new_profile)
     save_profiles(profiles_data)
     _LOGGER.info("Profile created: id=%s name=%s", new_profile.get("id"), new_profile.get("name"))

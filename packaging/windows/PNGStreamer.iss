@@ -32,6 +32,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 AppMutex=PNGStreamerMutex
 CloseApplications=yes
+ChangesAssociations=yes
 SetupIconFile={#Root}\app\assets\icon.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
@@ -68,6 +69,15 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: startmenu
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Registry]
+; Double-clicking a .pga file imports the avatar.
+Root: HKCU; Subkey: "Software\Classes\.pga"; ValueType: string; ValueName: ""; ValueData: "PNGStreamer.Avatar"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Avatar"; ValueType: string; ValueName: ""; ValueData: "PNG Streamer avatar"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Avatar\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Avatar\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\.pgs"; ValueType: string; ValueName: ""; ValueData: "PNGStreamer.Scene"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Scene"; ValueType: string; ValueName: ""; ValueData: "PNG Streamer scene"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Scene\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Classes\PNGStreamer.Scene\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 ; Autostart entry written by the app itself; removed on uninstall.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "PNGStreamer"; Flags: uninsdeletevalue dontcreatekey
 

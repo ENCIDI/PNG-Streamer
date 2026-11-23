@@ -23,3 +23,10 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "LEGACY_IMAGES_DIR", root / "images")
     monkeypatch.setattr(paths, "DEFAULTS_DIR", REAL_DEFAULTS_DIR)
     return root
+
+
+def pytest_ignore_collect(collection_path, config):
+    # The Studio's tests live with its code outside git; skip them where it is missing.
+    from app import features
+
+    return collection_path.name == "studio" and not features.STUDIO

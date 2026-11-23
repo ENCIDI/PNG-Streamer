@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="__LANG__">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0D0E12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="/panel/manifest.json" />
+<link rel="icon" href="/panel/assets/icon-192.png" />
+<link rel="apple-touch-icon" href="/panel/assets/icon-192.png" />
+<title>PNG Streamer</title>
+<style>
+  :root {
+    --bg: #0D0E12; --surface: #16181E; --surface2: #1E2129; --surface3: #252833; --border: #252831;
+    --text: #E8EAF0; --muted: #8A90A0; --faint: #5A6070; --accent: #C8F65A; --ink: #0D0E12; --danger: #FF6B6B;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.35 Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #1A1C22; }
+  header img { width: 28px; height: 28px; border-radius: 8px; }
+  header .title { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; font-size: 13px; font-weight: 600;
+    background: rgba(138,144,160,.1); color: var(--muted); white-space: nowrap; }
+  .pill.live { background: rgba(200,246,90,.1); color: var(--accent); }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .wake { font-size: 12px; color: var(--faint); border: 0; background: none; padding: 4px; }
+  .wake.on { color: var(--accent); }
+  .icon { border: 0; background: var(--surface2); color: var(--text); width: 36px; height: 36px; border-radius: 10px;
+    display: inline-grid; place-items: center; padding: 0; flex: none; }
+  .icon:active { transform: scale(.94); }
+  .icon .leave, .full .icon .enter { display: none; }
+  .full .icon .leave { display: inline; }
+  nav { display: none; gap: 4px; padding: 8px 14px 0; overflow-x: auto; scrollbar-width: none; margin: 0 auto; width: 100%; box-sizing: border-box; }
+  nav.show { display: flex; }
+  nav button { flex: 1 0 auto; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--muted);
+    font: inherit; font-weight: 600; white-space: nowrap; }
+  nav button.on { background: var(--surface2); color: var(--text); }
+  main { flex: 1; overflow-y: auto; padding: 14px 14px calc(24px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+  #grid { display: grid; gap: 10px; margin: 0 auto; }
+  #grid > * { min-width: 0; min-height: 0; }
+  .btn { position: relative; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border);
+    background: linear-gradient(#181A21, #14161B); color: var(--text); font: inherit; font-weight: 600; text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 4px; touch-action: manipulation; user-select: none;
+    overflow: hidden; transition: transform .08s ease, background .15s ease, border-color .15s ease; }
+  .btn span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .btn small { color: var(--faint); font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn:active { transform: scale(.97); }
+  .btn.flash { border-color: var(--accent); background: rgba(200,246,90,.12); }
+  .btn.on { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  .btn.on small { color: rgba(13,14,18,.6); }
+  .btn.tinted { border-left: 4px solid var(--c); }
+  .btn.tinted.flash { border-color: var(--c); }
+  .btn.tinted.on { background: var(--c); border-color: var(--c); }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; }
+  .label { display: flex; align-items: flex-end; padding: 0 4px 4px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; }
+  .label.center { justify-content: center; }
+  .slider { justify-content: center; gap: 6px; }
+  .slider .head { display: flex; justify-content: space-between; font-weight: 600; gap: 8px; }
+  .slider .head span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--c, var(--accent)); height: 28px; margin: 0; }
+  .slider.vertical { align-items: center; }
+  .slider.vertical .track { flex: 1; width: 100%; position: relative; }
+  .slider.vertical input { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
+  .chips { gap: 8px; justify-content: center; }
+  .chips .title, .meter .title, .chat .title { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .chips .row { display: flex; gap: 8px; flex-wrap: wrap; overflow-y: auto; }
+  .chip { padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font: inherit; white-space: nowrap; }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  .meter { justify-content: center; gap: 8px; }
+  .avatar { padding: 0; overflow: hidden; background: radial-gradient(circle at 50% 40%, #1D2028, #111318); }
+  .avatar iframe { width: 100%; height: 100%; border: 0; pointer-events: none; background: transparent; }
+  .meter .bar { height: 12px; border-radius: 6px; background: var(--surface3); overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; width: 0; background: var(--c, var(--accent)); border-radius: 6px; transition: width .1s linear; }
+  .chat { padding: 10px; overflow: hidden; }
+  .chat .title { padding: 0 4px 8px; }
+  .chat .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .msg { padding: 7px 10px; background: var(--surface2); border-radius: 10px; word-wrap: break-word; }
+  .msg b { font-weight: 700; }
+  .msg img { height: 1.6em; vertical-align: middle; margin: -4px 1px; }
+  .em { position: relative; display: inline-block; vertical-align: middle; }
+  .em img.zw { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; }
+  .empty { color: var(--faint); padding: 8px 4px; text-align: center; }
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--surface3);
+    padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255,107,107,.4); display: none; }
+  #offline { display: none; text-align: center; padding: 8px; background: rgba(255,107,107,.12); color: var(--danger); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <img src="/panel/assets/icon-192.png" alt="" />
+  <div class="title" id="title">PNG Streamer</div>
+  <button class="wake" id="wake"></button>
+  <button class="icon" id="fullscreen" hidden>
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path class="enter" d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5" />
+      <path class="leave" d="M7.5 3v4.5H3M17 7.5h-4.5V3M12.5 17v-4.5H17M3 12.5h4.5V17" />
+    </svg>
+  </button>
+  <span class="pill" id="status"><i></i><span></span></span>
+</header>
+<div id="offline"></div>
+<nav id="tabs"></nav>
+<main id="main"><div id="grid"></div></main>
+<div class="toast" id="toast"></div>
+<video id="nosleep" muted playsinline style="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none"></video>
+<script>
+function appendEmote(row, f) {
+  // 7TV zero-width emotes (RainTime, PETPET…) go on top of the emote before them.
+  const img = document.createElement("img"); img.src = f.url; img.alt = f.text; img.title = f.text;
+  let last = row.lastChild;
+  if (last && last.nodeType === 3 && !last.textContent.trim()) last = last.previousSibling;
+  if (f.zero_width && last && last.classList && last.classList.contains("em")) { img.className = "zw"; last.append(img); return; }
+  const box = document.createElement("span"); box.className = "em"; box.append(img); row.append(box);
+}
+const T = __STRINGS__;
+const $ = (id) => document.getElementById(id);
+let state = null, renderedKey = "", page = Number(localStorage.getItem("pngs-page") || 0), messages = [];
+
+function post(url) {
+  navigator.vibrate && navigator.vibrate(12);
+  return fetch(url, { method: "POST", credentials: "same-origin" })
+    .then((r) => r.json()).then((r) => { if (!r.ok) toast(r.error || T.failed); return r; })
+    .catch(() => toast(T.offline));
+}
+function toast(text) { const t = $("toast"); t.textContent = text; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 2500); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function flash(b) { b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 250); }
+
+const ACTIONS = {
+  trigger: (id) => `/api/param/${encodeURIComponent(id)}`,
+  toggle: (id) => `/api/param/${encodeURIComponent(id)}`,
+  sequence: (id) => `/api/sequence/${encodeURIComponent(id)}`,
+  profile: (id) => `/api/profile/${id}`,
+  sound: (id) => `/api/sound-profile/${id}`,
+};
+
+const BUILD = {
+  button(w) {
+    const b = el("button", "btn" + (w.color ? " tinted" : ""));
+    b.append(el("span", "", w.label), el("small", "", w.sub));
+    if (w.action === "toggle") b.dataset.param = w.target;
+    if (w.action === "profile") b.dataset.profile = w.target;
+    if (w.action === "sound") b.dataset.sound = w.target;
+    b.onclick = () => { if (w.action === "trigger" || w.action === "sequence") flash(b); post(ACTIONS[w.action](w.target)); };
+    return b;
+  },
+  slider(w) {
+    const vertical = w.h > w.w;
+    const box = el("div", "box slider" + (vertical ? " vertical" : ""));
+    const head = el("div", "head"); const value = el("span");
+    head.append(el("b", "", w.label), value);
+    const input = el("input"); input.type = "range"; input.min = w.min; input.max = w.max; input.step = (w.max - w.min) / 100;
+    input.dataset.param = w.target; value.dataset.value = w.target;
+    let timer = null;
+    input.oninput = () => { value.textContent = Number(input.value).toFixed(2); clearTimeout(timer);
+      timer = setTimeout(() => post(`/api/param/${encodeURIComponent(w.target)}?value=${input.value}`), 60); };
+    if (vertical) {
+      const track = el("div", "track"); track.append(input); box.append(head, track);
+      requestAnimationFrame(() => { input.style.width = `${track.clientHeight}px`; });
+    } else box.append(head, input);
+    return box;
+  },
+  label(w) { return el("div", "label" + (w.align === "center" ? " center" : ""), w.text); },
+  chips(w) {
+    const box = el("div", "box chips"); const row = el("div", "row");
+    for (const p of w.items) {
+      const c = el("button", "chip", p.name);
+      c.dataset[w.action === "profile" ? "profile" : "sound"] = p.id;
+      c.onclick = () => post(ACTIONS[w.action](p.id)); row.append(c);
+    }
+    box.append(el("div", "title", w.title), row);
+    return box;
+  },
+  meter() {
+    const box = el("div", "box meter"); const bar = el("div", "bar"); bar.append(el("i"));
+    box.append(el("div", "title", T.mic), bar);
+    return box;
+  },
+  avatar() {
+    const box = el("div", "box avatar");
+    const frame = el("iframe");
+    frame.src = "/widget"; frame.title = T.avatar_live; frame.setAttribute("scrolling", "no");
+    box.append(frame);
+    return box;
+  },
+  chat() {
+    const box = el("div", "box chat");
+    box.append(el("div", "title", state.chat_channel ? `${T.chat} · ${state.chat_channel}` : T.chat), el("div", "list"));
+    return box;
+  },
+};
+
+function renderTabs() {
+  const tabs = $("tabs"); tabs.replaceChildren();
+  state.pages.forEach((p, i) => {
+    const b = el("button", i === page ? "on" : "", p.name || (state.pages.length > 1 ? `${T.page} ${i + 1}` : T.controls));
+    b.onclick = () => { page = i; localStorage.setItem("pngs-page", page); render(); };
+    tabs.append(b);
+  });
+  tabs.classList.toggle("show", state.pages.length > 1);
+}
+
+function layoutGrid(current) {
+  // Cells fill the width of a phone, but never get giant on a laptop.
+  const grid = $("grid"); const gap = 10;
+  const width = $("main").clientWidth - 28;
+  const cell = Math.max(56, Math.min(140, (width - gap * (current.cols - 1)) / current.cols));
+  const total = cell * current.cols + gap * (current.cols - 1);
+  grid.style.width = `${total}px`;
+  $("tabs").style.maxWidth = `${total + 28}px`;
+  grid.style.gridTemplateColumns = `repeat(${current.cols}, ${cell}px)`;
+  grid.style.gridAutoRows = `${Math.round(cell * 0.8)}px`;
+}
+
+function render() {
+  if (page >= state.pages.length) page = 0;
+  const current = state.pages[page] || { cols: 4, widgets: [] };
+  const key = JSON.stringify([state.pages, page, state.chat_channel, state.advanced]);
+  if (key !== renderedKey) {
+    renderedKey = key;
+    renderTabs();
+    const grid = $("grid"); grid.replaceChildren();
+    layoutGrid(current);
+    for (const w of current.widgets) {
+      const node = BUILD[w.kind](w);
+      node.style.gridColumn = `${w.x + 1} / span ${w.w}`;
+      node.style.gridRow = `${w.y + 1} / span ${w.h}`;
+      if (w.color) node.style.setProperty("--c", w.color);
+      grid.append(node);
+    }
+    if (!current.widgets.length) {
+      const empty = el("div", "empty", (state.advanced && T.no_params) || T.simple_hint);
+      empty.style.gridColumn = `1 / span ${current.cols}`; grid.append(empty);
+    }
+    showChat();
+  }
+  // live values
+  for (const p of state.params) {
+    document.querySelectorAll(`.btn[data-param="${CSS.escape(p.id)}"]`).forEach((b) => b.classList.toggle("on", !!p.value));
+    for (const input of document.querySelectorAll(`input[data-param="${CSS.escape(p.id)}"]`)) {
+      if (document.activeElement === input) continue;
+      input.value = p.value ?? 0;
+      const v = input.closest(".slider").querySelector("span[data-value]");
+      if (v) v.textContent = Number(p.value ?? 0).toFixed(2);
+    }
+  }
+  document.querySelectorAll("[data-profile]").forEach((c) => c.classList.toggle("on", Number(c.dataset.profile) === state.profile));
+  document.querySelectorAll("[data-sound]").forEach((c) => c.classList.toggle("on", Number(c.dataset.sound) === state.sound_profile));
+  $("title").textContent = state.profile_name || "PNG Streamer";
+  const pill = $("status"); pill.classList.toggle("live", state.live);
+  pill.querySelector("span").textContent = state.live ? T.live : T.stopped;
+}
+window.addEventListener("resize", () => { if (state) { renderedKey = ""; render(); } });
+
+function messageRow(m) {
+  const row = el("div", "msg"); row.dataset.id = m.id;
+  const name = el("b", "", m.name + (m.action ? " " : ": ")); name.style.color = m.color; row.append(name);
+  for (const f of m.fragments) {
+    if (f.type === "emote") appendEmote(row, f);
+    else row.append(document.createTextNode(f.text));
+  }
+  if (m.action) row.style.fontStyle = "italic";
+  return row;
+}
+function showChat() {
+  const ids = new Set(messages.map((m) => m.id));
+  for (const list of document.querySelectorAll(".chat .list")) {
+    const stick = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    for (const row of [...list.children]) if (!ids.has(row.dataset.id)) row.remove();  // deleted by moderators
+    const shown = new Set([...list.children].map((r) => r.dataset.id));
+    for (const m of messages) if (!shown.has(m.id)) list.append(messageRow(m));
+    if (stick) list.scrollTop = list.scrollHeight;
+  }
+}
+
+function connect() {
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/panel/ws`);
+  ws.onopen = () => { $("offline").style.display = "none"; ws._ping = setInterval(() => ws.readyState === 1 && ws.send("ping"), 10000); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "state") { state = msg; render(); }
+    else if (msg.type === "chat") { messages = msg.messages; showChat(); }
+    else if (msg.type === "level") document.querySelectorAll(".meter .bar i").forEach((i) => i.style.width = `${Math.min(100, msg.v)}%`);
+  };
+  ws.onclose = () => { clearInterval(ws._ping); $("offline").textContent = T.offline; $("offline").style.display = "block"; setTimeout(connect, 1500); };
+}
+
+// --- keep the screen on ---
+// 1. The Screen Wake Lock API — browsers only offer it on https or this computer.
+// 2. Over plain http on the network: a video whose source is a MediaStream (drawn
+//    from a tiny canvas). Chrome and Safari keep the screen on for a playing
+//    MediaStream video of any size; ordinary muted videos only count when they
+//    fill a large part of the screen, which is why a hidden video file is not enough.
+// 3. Browsers without captureStream: a video file, re-seeked instead of looped
+//    (Safari never keeps the screen on for looping videos).
+let lock = null, streamReady = false, painter = null;
+const video = $("nosleep");
+
+function setupVideo() {
+  if (streamReady) return;
+  streamReady = true;
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 2;
+  const ctx = canvas.getContext("2d");
+  if (canvas.captureStream) {
+    let tick = 0;
+    const paint = () => { ctx.fillStyle = (tick++ % 2) ? "#0D0E12" : "#0E0F13"; ctx.fillRect(0, 0, 2, 2); };
+    paint();
+    painter = setInterval(paint, 500);  // a stream only sends frames when the canvas changes
+    video.srcObject = canvas.captureStream(4);
+  } else {
+    video.src = /iPad|iPhone|Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+      ? "/panel/assets/nosleep.mp4" : "/panel/assets/nosleep.webm";
+    video.addEventListener("timeupdate", () => { if (video.currentTime > 0.5) video.currentTime = 0; });
+  }
+}
+
+async function keepAwake() {
+  if (window.isSecureContext && "wakeLock" in navigator) {
+    try {
+      if (!lock) {
+        lock = await navigator.wakeLock.request("screen");
+        lock.addEventListener("release", () => { lock = null; showWake(); });
+      }
+      showWake();
+      return;
+    } catch (_) { /* refused (battery saver, not focused) — use the video */ }
+  }
+  setupVideo();
+  try { await video.play(); } catch (_) { /* needs a tap */ }
+  showWake();
+}
+function awake() { return !!lock || (!video.paused && !video.ended && video.readyState >= 2); }
+function showWake() { const w = $("wake"); w.textContent = awake() ? T.awake : T.tap_awake; w.classList.toggle("on", awake()); }
+video.addEventListener("playing", showWake);
+video.addEventListener("pause", showWake);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+document.addEventListener("click", () => { if (!awake()) keepAwake(); }, { passive: true });
+$("wake").onclick = keepAwake;
+// --- full screen ---
+const root = document.documentElement;
+const canFullscreen = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFullscreen() {
+  if (fullscreenElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else {
+    const request = root.requestFullscreen ? root.requestFullscreen({ navigationUI: "hide" }) : root.webkitRequestFullscreen();
+    if (request && request.catch) request.catch(() => toast(T.failed));
+  }
+}
+function showFullscreen() {
+  const full = !!fullscreenElement();
+  document.body.classList.toggle("full", full);
+  $("fullscreen").title = full ? T.exit_fullscreen : T.fullscreen;
+  $("fullscreen").setAttribute("aria-label", $("fullscreen").title);
+  if (state) { renderedKey = ""; render(); }  // the grid gets more room
+}
+// Installed to the home screen it already runs full screen.
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+$("fullscreen").hidden = !canFullscreen || standalone;
+$("fullscreen").onclick = () => { toggleFullscreen(); keepAwake(); };
+document.addEventListener("fullscreenchange", showFullscreen);
+document.addEventListener("webkitfullscreenchange", showFullscreen);
+showFullscreen();
+
+showWake(); keepAwake(); connect();
+</script>
+</body>
+</html>

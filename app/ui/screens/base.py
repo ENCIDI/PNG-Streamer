@@ -36,7 +36,7 @@ class ProfileScreen(Screen):
     """Profile list on the left, an editor on the right, explicit save with
     unsaved-changes tracking. Subclasses implement the storage and editor hooks."""
 
-    def __init__(self, state: AppState):
+    def __init__(self, state: AppState, packs: bool = False):
         super().__init__(state)
         self._selected_id: Optional[int] = None
         self._baseline: Optional[Dict[str, Any]] = None
@@ -60,7 +60,7 @@ class ProfileScreen(Screen):
         body = QHBoxLayout()
         body.setSpacing(16)
         list_card = Card(margins=16)
-        self.profile_list = ProfileList()
+        self.profile_list = ProfileList(packs=packs)
         list_card.body.addWidget(self.profile_list, 1)
         body.addWidget(list_card)
 

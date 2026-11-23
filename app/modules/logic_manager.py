@@ -5,7 +5,7 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from app import paths
+from app import features, paths
 from app.modules import audio_manager as am, storage_manager as sm
 
 
@@ -13,6 +13,11 @@ _BLINK_LOCK = threading.Lock()
 _BLINK_SIGNATURE: Optional[Tuple[Any, int, int, int]] = None
 _BLINK_NEXT_AT = 0.0
 _BLINK_UNTIL = 0.0
+
+# _REVISION changes whenever something is switched outside of the UI (API,
+# hotkeys, Studio parameters), so the UI can refresh.
+_STATE_LOCK = threading.RLock()
+_REVISION = 0
 
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
@@ -49,14 +54,65 @@ def import_images(files: List[Path]) -> List[str]:
     return imported
 
 
-def get_active_image_profile() -> Optional[Dict[str, Any]]:
+def active_image_profile_id() -> int:
     settings = sm.load_settings().get("settings", {})
-    active_id = settings.get("active-image-profile-id", 1)
     try:
-        active_id = int(active_id)
+        return int(settings.get("active-image-profile-id", 1))
     except (TypeError, ValueError):
-        active_id = 1
-    return sm.get_profile_by_id(active_id)
+        return 1
+
+
+def get_active_image_profile() -> Optional[Dict[str, Any]]:
+    return sm.get_profile_by_id(active_image_profile_id())
+
+
+def _bump() -> None:
+    global _REVISION
+    _REVISION += 1
+
+
+def revision() -> int:
+    return _REVISION
+
+
+def notify_changed() -> None:
+    """Tell the UI that something changed outside of it (API, hotkeys)."""
+    with _STATE_LOCK:
+        _bump()
+
+
+def activate_image_profile(profile_id: int) -> bool:
+    if sm.get_profile_by_id(profile_id) is None:
+        return False
+    with _STATE_LOCK:
+        sm.update_settings({"active-image-profile-id": profile_id})
+        _bump()
+    return True
+
+
+def is_advanced(profile: Optional[Dict[str, Any]]) -> bool:
+    # Without the Studio an advanced profile plays its frames like a simple one.
+    return features.STUDIO and (profile or {}).get("mode") == "advanced"
+
+
+def find_image_profile(key: Any) -> Optional[Dict[str, Any]]:
+    """Look a profile up by id or (case-insensitive) name."""
+    profiles = sm.list_profiles()
+    text = str(key).strip()
+    found = next((p for p in profiles if str(p.get("id")) == text), None)
+    if found is None:
+        found = next((p for p in profiles if str(p.get("name", "")).casefold() == text.casefold()), None)
+    return found
+
+
+def referenced_images(profile: Dict[str, Any]) -> List[str]:
+    """Image files a simple profile uses (frames and blink frames)."""
+    names: List[str] = []
+    for item in list((profile or {}).get("images", [])) + list((profile or {}).get("blink-images", [])):
+        value = str(item.get("path-to-image", "")).strip() if isinstance(item, dict) else ""
+        if value and value not in names:
+            names.append(value)
+    return names
 
 
 def get_active_sound_profile() -> Optional[Dict[str, Any]]:
@@ -145,6 +201,7 @@ def _pick_image_entry(profile: Dict[str, Any], volume: float) -> Optional[Dict[s
 
 
 def sorted_frames(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Frames of a simple profile ordered by threshold."""
     return sorted(_normalize_images(profile.get("images", [])), key=lambda item: item.get("volume-level", 0))
 
 
@@ -239,28 +296,45 @@ def _pick_blink_image(profile: Dict[str, Any], image_id: Optional[int]) -> Optio
     return resolve_image_path(path_value)
 
 
-def get_current_image_state(volume: Optional[float] = None) -> Tuple[Optional[Path], int]:
-    profile = get_active_image_profile()
-    if not profile:
-        return None, 0
+def compute_state(volume: Optional[float] = None, profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """What a simple profile shows right now; used by the preview and the OBS widget."""
+    profile = profile if profile is not None else get_active_image_profile()
     current_volume = am.get_current_volume() if volume is None else volume
+    state: Dict[str, Any] = {
+        "profile": profile.get("id") if profile else None,
+        "frame": None,
+        "level": 0,
+        "image": None,
+        "shake": 0,
+        "speaking": False,
+        "blink": False,
+        "volume": round(float(current_volume), 1),
+    }
+    if profile is None or is_advanced(profile):
+        return state
+    frames = sorted_frames(profile)
     selected = _pick_image_entry(profile, current_volume)
-    if not selected:
-        return None, 0
-    base_path = resolve_image_path(str(selected.get("path-to-image", "")))
-    if base_path is None:
-        return None, 0
-    try:
-        shake_level = int(selected.get("shake-level", 0))
-    except (TypeError, ValueError):
-        shake_level = 0
-    if shake_level < 0:
-        shake_level = 0
+    if selected is None:
+        return state
+    index = next((i for i, frame in enumerate(frames) if frame == selected), 0)
+    state.update(
+        frame=index,
+        level=selected.get("volume-level", 0),
+        image=selected.get("path-to-image"),
+        shake=max(0, int(selected.get("shake-level", 0) or 0)),
+        speaking=index > 0,
+    )
     if _should_blink(profile):
-        blink_path = _pick_blink_image(profile, selected.get("id"))
-        if blink_path is not None:
-            return blink_path, shake_level
-    return base_path, shake_level
+        blink = _normalize_blink_images(profile.get("blink-images", [])).get(selected.get("id"))
+        if blink and resolve_image_path(blink) is not None:
+            state["image"] = blink
+            state["blink"] = True
+    return state
+
+
+def get_current_image_state(volume: Optional[float] = None) -> Tuple[Optional[Path], int]:
+    state = compute_state(volume)
+    return resolve_image_path(state["image"] or ""), state["shake"]
 
 
 def get_current_image_path(volume: Optional[float] = None) -> Optional[Path]:
